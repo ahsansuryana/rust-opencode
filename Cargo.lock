@@ -114,6 +114,12 @@ version = "0.1.0"
 [[package]]
 name = "oc-auth"
 version = "0.1.0"
+dependencies = [
+ "oc-config",
+ "oc-global",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "oc-cli"

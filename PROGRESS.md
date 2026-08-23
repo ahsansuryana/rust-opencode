@@ -6,7 +6,7 @@ Status: `not-started` / `in-progress` / `done` / `blocked (alasan)`.
 |---|---|---|---|---|
 | 0 | (workspace) | done | 2026-08-23 | Bootstrap Cargo workspace + file konvensi; tanpa logic port (murni scaffolding, tidak ada unit/golden test yang relevan) |
 | 1 | oc-global, oc-config | done | 2026-08-23 | Port global.ts+flag.ts (subset), config loading/merging/schema ConfigV1 lengkap, variable substitute, JSONC parser port jsonc-parser@3.3.1, managed dir. Unit test 33 + golden test vs paket TS asli (jsonc-parser/remeda/xdg-basedir). DITUNDA (lihat DEVIATIONS.md): jalur remote well-known/org console, npm install, discovery agent/command/plugin markdown, write-back update/updateGlobal, tui*.ts; golden loader TS penuh menunggu bun install monorepo yang tidak stabil di lingkungan ini |
-| 2 | oc-auth | not-started | - | - |
+| 2 | oc-auth | done | 2026-08-23 | Port auth/index.ts penuh: enum Info (oauth/api/wellknown, tag type), OPENCODE_AUTH_CONTENT override, normalisasi key strip slash, chmod 0600 unix. Test CRUD/normalisasi/round-trip/permission/env-fallback |
 | 3 | oc-storage | not-started | - | - |
 | 4 | oc-permission | not-started | - | - |
 | 5 | oc-tool (bag. 1: filesystem) | not-started | - | - |
