@@ -1,1 +1,5 @@
 /target
+
+# golden-gen tooling
+/tools/golden-gen/node_modules/
+/tools/golden-gen/bun.lock
