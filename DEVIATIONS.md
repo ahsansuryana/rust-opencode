@@ -28,3 +28,6 @@
 - [Sprint 3] `TxReentrantLock` per-target (RcMap Effect fiber) disederhanakan jadi registry RwLock per path — semantik reentrant fiber tidak ada padanan langsung di std thread; perilaku single-thread identik.
 - [Sprint 3] `list()` sort pakai byte-order Rust (bukan localeCompare JS) — urutan bisa beda utk karakter non-ASCII.
 - [Sprint 1] orDie/defect Effect dipetakan ke Result::Err pada boundary crate (lebih graceful); error path jarang tercapai.
+- [Sprint 5] GrepTool/GlobTool tetap memanggil binary `rg` eksternal (sesuai source); bila rg tidak terpasang, dipakai fallback internal terbatas: glob walker mini + pencarian literal (bukan regex) — perilaku penuh butuh rg. Auto-download rg 15.1.0 (ripgrep/binary.ts) ditunda.
+- [Sprint 5] Tidak ada `ListTool` di source aktual — asumsi sprint salah; pembacaan direktori sudah dicakup ReadTool.
+- [Sprint 5] Golden "jalankan tool TS asli" ditunda (bun install monorepo tidak stabil di lingkungan ini); output string direplikasi dari bacaan source dan diuji lewat fixture Rust.

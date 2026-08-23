@@ -185,6 +185,13 @@ dependencies = [
 [[package]]
 name = "oc-tool"
 version = "0.1.0"
+dependencies = [
+ "oc-config",
+ "oc-global",
+ "oc-permission",
+ "serde_json",
+ "tracing",
+]
 
 [[package]]
 name = "once_cell"
