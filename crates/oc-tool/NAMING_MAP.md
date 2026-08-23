@@ -43,3 +43,15 @@ memiliki list.ts) — asumsi sprint salah; read.ts menangani direktori.
 | tool/truncate.ts | `Truncate.Service` (`output`,`cleanup`,`write`,`limits`), `MAX_LINES/MAX_BYTES` | `truncate::{output,cleanup,MAX_LINES,MAX_BYTES,truncation_dir}` | crates/oc-tool/src/truncate.rs | hint Task-tool menunggu agent permission (sprint 8) — varian plain dipakai; cleanup scheduler hourly menyusul di CLI runtime |
 | truncation-dir.ts | `TRUNCATION_DIR` | `truncation_dir()` | crates/oc-tool/src/truncate.rs | data/tool-output |
 | registry.ts:291-303 | filter `tools(model)` gpt-*/oss/gpt-4 | `ToolRegistry::tools_for_model` | crates/oc-tool/src/lib.rs | aturan apply_patch vs edit+write; tool apply_patch sendiri menyusul sprint 6 |
+
+## Sprint 6a
+
+| TS asli (path:baris) | TS identifier | Rust identifier | Rust lokasi | Catatan |
+|---|---|---|---|---|
+| core/shell.ts:7-19,131-224 | META table, `name`,`ps`,`posix`,`ok`,`acceptable`,`gitbash`,`args` | `shell_detect::{shell_name,ps,posix,acceptable_name,acceptable,gitbash,exec_args,to_kind}` | crates/oc-tool/src/shell_detect.rs | login-script bash/zsh (source rc + cd $1 + eval) direplikasi persis |
+| tool/shell.ts:27-66 | `CWD`,`FILES`,`CMD_FILES`,`FLAGS`,`SWITCHES` | konstanta sama nama | crates/oc-tool/src/shell.rs | disalin verbatim |
+| shell.ts:220-255 | `preview`,`tail` | `preview`,`tail_text` | crates/oc-tool/src/shell.rs | byte-cap UTF-8 boundary replikasi |
+| shell.ts:263-291 | `ask` (scan→permission) | `scan_and_ask` | crates/oc-tool/src/shell.rs | DEVIASI: tokenizer sederhana pengganti tree-sitter bash/powershell; external_directory + pattern + arity prefix tetap |
+| shell.ts:293-310,428-595 | `cmd`,`run` | inline di `shell::execute` | crates/oc-tool/src/shell.rs | ring buffer keep=maxBytes*2, overflow→truncation file, tail final, "(no output)", `<shell_metadata>` timeout text persis; abort-signal arm menunggu session sprint 10 |
+| shell/prompt.ts | `ShellPrompt.render`, shell.txt | deskripsi = include_str assets/shell.txt | crates/oc-tool/assets/shell.txt | render substitusi ${key} penuh ditunda (sprint-6b) |
+| tool/webfetch.ts, websearch.ts | WebFetchTool/WebSearchTool | DITUNDA ke sprint-6b | - | keduanya built-in ✓ (ada di source); butuh provider/exa flags |

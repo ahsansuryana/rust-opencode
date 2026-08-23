@@ -8,6 +8,8 @@ pub mod grep;
 pub mod path_safety;
 pub mod read;
 pub mod ripgrep;
+pub mod shell;
+pub mod shell_detect;
 pub mod truncate;
 pub mod write;
 
@@ -150,6 +152,7 @@ impl ToolRegistry {
     pub fn builtin() -> Self {
         ToolRegistry {
             tools: vec![
+                shell::SHELL_TOOL,
                 edit::EDIT_TOOL,
                 read::READ_TOOL,
                 write::WRITE_TOOL,

@@ -550,3 +550,95 @@ fn registry_model_filter_swaps_edit_write_for_gpt() {
     assert!(ids_for("gpt-oss-120b").contains(&"edit".to_string()));
     assert!(ids_for("gpt-4o").contains(&"edit".to_string()));
 }
+
+// --- Sprint 6a: shell detection + shell tool ---
+
+use oc_tool::shell_detect;
+
+#[test]
+fn shell_detection_meta_and_args() {
+    // ps/posix classification
+    assert!(shell_detect::ps(
+        r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+    ));
+    assert!(shell_detect::ps("/usr/bin/pwsh"));
+    assert!(!shell_detect::ps("/bin/bash"));
+    assert!(shell_detect::posix("/bin/bash"));
+    assert!(shell_detect::posix("/bin/zsh"));
+    assert!(!shell_detect::posix("pwsh"));
+    // deny list
+    assert!(!shell_detect::acceptable_name("fish"));
+    assert!(!shell_detect::acceptable_name("nu"));
+    assert!(shell_detect::acceptable_name("bash"));
+
+    // exec args per shell
+    assert_eq!(
+        shell_detect::exec_args("/bin/sh", "echo hi", "/tmp"),
+        vec!["-c".to_string(), "echo hi".to_string()]
+    );
+    assert_eq!(
+        shell_detect::exec_args("cmd.exe", "dir", "C:\\"),
+        vec!["/c".to_string(), "dir".to_string()]
+    );
+    assert_eq!(
+        shell_detect::exec_args("/usr/bin/pwsh", "Get-ChildItem", "/"),
+        vec![
+            "-NoProfile".to_string(),
+            "-Command".to_string(),
+            "Get-ChildItem".to_string()
+        ]
+    );
+
+    // toKind
+    assert_eq!(shell_detect::to_kind("pwsh"), "powershell");
+    assert_eq!(shell_detect::to_kind("cmd"), "cmd");
+    assert_eq!(shell_detect::to_kind("bash"), "posix");
+}
+
+#[test]
+fn shell_tool_runs_echo_and_reports_exit() {
+    let _guard = env_lock();
+    let root = temp_dir("shell");
+    setup_xdg(&root);
+    let project = fixture(&root);
+    let (ctx, _sink) = make_ctx(project.clone(), project.clone());
+    let registry = ToolRegistry::builtin();
+
+    let result = registry
+        .get("bash")
+        .unwrap()
+        .run(serde_json::json!({"command": "echo hello-shell"}), &ctx)
+        .unwrap();
+
+    assert_eq!(result.title, "echo hello-shell");
+    if cfg!(windows) {
+        // cmd echo menambah newline CRLF; cek substring saja
+        assert!(result.output.contains("hello-shell"), "{}", result.output);
+    } else {
+        assert!(result.output.contains("hello-shell"));
+    }
+    assert!(result.metadata["exit"].is_number());
+
+    // exit code non-zero tetap sukses eksekusi (metadata.exit mencerminkan)
+    let result = registry
+        .get("bash")
+        .unwrap()
+        .run(serde_json::json!({"command": "exit 5"}), &ctx)
+        .unwrap();
+    assert_eq!(result.metadata["exit"], 5);
+
+    // timeout: sleep melebihi batas → metadata shell_metadata muncul
+    let cmd = if cfg!(windows) {
+        serde_json::json!({"command": "ping -n 3 127.0.0.1 > nul", "timeout": 300})
+    } else {
+        serde_json::json!({"command": "sleep 2", "timeout": 300})
+    };
+    let result = registry.get("bash").unwrap().run(cmd, &ctx).unwrap();
+    assert!(
+        result
+            .output
+            .contains("terminated command after exceeding timeout 300 ms"),
+        "{}",
+        result.output
+    );
+}

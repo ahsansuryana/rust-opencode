@@ -33,3 +33,5 @@
 - [Sprint 5] GrepTool/GlobTool tetap memanggil binary `rg` eksternal (sesuai source); bila rg tidak terpasang, dipakai fallback internal terbatas: glob walker mini + pencarian literal (bukan regex) — perilaku penuh butuh rg. Auto-download rg 15.1.0 (ripgrep/binary.ts) ditunda.
 - [Sprint 5] Tidak ada `ListTool` di source aktual — asumsi sprint salah; pembacaan direktori sudah dicakup ReadTool.
 - [Sprint 5] Golden "jalankan tool TS asli" ditunda (bun install monorepo tidak stabil di lingkungan ini); output string direplikasi dari bacaan source dan diuji lewat fixture Rust.
+- [Sprint 6a] Scan command ShellTool memakai tokenizer sederhana, bukan tree-sitter bash/powershell grammar — pattern permission utk command kompleks bisa beda dari TS; eksekusi/output format identik.
+- [Sprint 6a] Abort signal (user cancel mid-command) belum terhubung (butuh session loop sprint 10); timeout kill sudah aktif.
