@@ -1,0 +1,34 @@
+{
+  "target": {
+    "model": "g/model",
+    "instructions": [
+      "a.md"
+    ],
+    "permission": {
+      "edit": "ask"
+    }
+  },
+  "source": {
+    "model": "p/model",
+    "instructions": [
+      "b.md"
+    ],
+    "permission": {
+      "bash": {
+        "rm": "deny"
+      }
+    }
+  },
+  "merged": {
+    "model": "p/model",
+    "instructions": [
+      "b.md"
+    ],
+    "permission": {
+      "edit": "ask",
+      "bash": {
+        "rm": "deny"
+      }
+    }
+  }
+}

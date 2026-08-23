@@ -1,0 +1,17 @@
+{
+  "input": "{\"a\": \"unterminated}",
+  "value": {
+    "a": "unterminated}"
+  },
+  "value_undefined": false,
+  "errors": [
+    {
+      "code": "UnexpectedEndOfString",
+      "offset": 6
+    },
+    {
+      "code": "CloseBraceExpected",
+      "offset": 20
+    }
+  ]
+}

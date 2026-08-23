@@ -1,0 +1,16 @@
+{
+  "input": "{\"mode\":{\"plan\":{\"prompt\":\"p\"}},\"tools\":{\"write\":false},\"autoshare\":true}",
+  "value": {
+    "mode": {
+      "plan": {
+        "prompt": "p"
+      }
+    },
+    "tools": {
+      "write": false
+    },
+    "autoshare": true
+  },
+  "value_undefined": false,
+  "errors": []
+}

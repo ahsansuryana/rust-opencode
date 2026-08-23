@@ -1,0 +1,14 @@
+{
+  "input": "{\"a\": 1 \"b\": 2}",
+  "value": {
+    "a": 1,
+    "b": 2
+  },
+  "value_undefined": false,
+  "errors": [
+    {
+      "code": "CommaExpected",
+      "offset": 8
+    }
+  ]
+}

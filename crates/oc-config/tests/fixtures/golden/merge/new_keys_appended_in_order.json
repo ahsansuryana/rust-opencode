@@ -1,0 +1,15 @@
+{
+  "target": {
+    "first": 1,
+    "mid": 2
+  },
+  "source": {
+    "mid": 3,
+    "last": 4
+  },
+  "merged": {
+    "first": 1,
+    "mid": 3,
+    "last": 4
+  }
+}

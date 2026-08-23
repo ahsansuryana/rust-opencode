@@ -1,0 +1,13 @@
+{
+  "input": "{\"s\": \"\\q\"}",
+  "value": {
+    "s": ""
+  },
+  "value_undefined": false,
+  "errors": [
+    {
+      "code": "InvalidEscapeCharacter",
+      "offset": 6
+    }
+  ]
+}

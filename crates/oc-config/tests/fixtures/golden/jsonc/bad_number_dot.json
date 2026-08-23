@@ -1,0 +1,13 @@
+{
+  "input": "{\"b\": 1.}",
+  "value": {
+    "b": 1
+  },
+  "value_undefined": false,
+  "errors": [
+    {
+      "code": "UnexpectedEndOfNumber",
+      "offset": 6
+    }
+  ]
+}

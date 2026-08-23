@@ -1,0 +1,21 @@
+{
+  "input": "{\"a\": 01}",
+  "value": {
+    "a": 0
+  },
+  "value_undefined": false,
+  "errors": [
+    {
+      "code": "CommaExpected",
+      "offset": 7
+    },
+    {
+      "code": "PropertyNameExpected",
+      "offset": 7
+    },
+    {
+      "code": "ValueExpected",
+      "offset": 8
+    }
+  ]
+}

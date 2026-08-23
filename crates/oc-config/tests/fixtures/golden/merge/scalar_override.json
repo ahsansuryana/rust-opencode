@@ -1,0 +1,13 @@
+{
+  "target": {
+    "a": 1,
+    "keep": true
+  },
+  "source": {
+    "a": 2
+  },
+  "merged": {
+    "a": 2,
+    "keep": true
+  }
+}

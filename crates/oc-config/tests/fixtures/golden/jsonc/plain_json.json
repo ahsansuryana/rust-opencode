@@ -1,0 +1,15 @@
+{
+  "input": "{\"a\":1,\"b\":[true,null,\"x\"],\"n\":-5,\"f\":2.5}",
+  "value": {
+    "a": 1,
+    "b": [
+      true,
+      null,
+      "x"
+    ],
+    "n": -5,
+    "f": 2.5
+  },
+  "value_undefined": false,
+  "errors": []
+}

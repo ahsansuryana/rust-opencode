@@ -1,0 +1,15 @@
+{
+  "input": "{\n  \"a\": ?,\n}",
+  "value": {},
+  "value_undefined": false,
+  "errors": [
+    {
+      "code": "InvalidSymbol",
+      "offset": 9
+    },
+    {
+      "code": "ValueExpected",
+      "offset": 10
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "input": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  // preferensi\n  \"model\": \"anthropic/claude-3\",\n  \"permission\": { \"bash\": { \"rm*\": \"deny\" } },\n}",
+  "value": {
+    "$schema": "https://opencode.ai/config.json",
+    "model": "anthropic/claude-3",
+    "permission": {
+      "bash": {
+        "rm*": "deny"
+      }
+    }
+  },
+  "value_undefined": false,
+  "errors": []
+}

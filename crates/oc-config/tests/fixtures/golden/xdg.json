@@ -1,0 +1,26 @@
+{
+  "defaults_from_home": {
+    "suffixes": {
+      "data": "/.local/share",
+      "config": "/.config",
+      "state": "/.local/state",
+      "cache": "/.cache"
+    }
+  },
+  "custom_config_home": {
+    "suffixes": {
+      "data": "/.local/share",
+      "config": "/custom-config",
+      "state": "/.local/state",
+      "cache": "/.cache"
+    }
+  },
+  "empty_env_falls_back": {
+    "suffixes": {
+      "data": "/.local/share",
+      "config": "/.config",
+      "state": "/.local/state",
+      "cache": "/.cache"
+    }
+  }
+}

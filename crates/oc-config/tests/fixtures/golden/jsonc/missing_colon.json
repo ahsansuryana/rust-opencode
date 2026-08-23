@@ -1,0 +1,11 @@
+{
+  "input": "{\"a\" 1}",
+  "value": {},
+  "value_undefined": false,
+  "errors": [
+    {
+      "code": "ColonExpected",
+      "offset": 5
+    }
+  ]
+}

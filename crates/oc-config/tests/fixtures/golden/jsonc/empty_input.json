@@ -1,0 +1,11 @@
+{
+  "input": "",
+  "value": null,
+  "value_undefined": true,
+  "errors": [
+    {
+      "code": "ValueExpected",
+      "offset": 0
+    }
+  ]
+}

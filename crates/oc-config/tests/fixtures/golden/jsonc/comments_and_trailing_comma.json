@@ -1,0 +1,12 @@
+{
+  "input": "{\n  // line comment\n  /* block */\n  \"a\": 1,\n  \"b\": [1, 2,],\n}",
+  "value": {
+    "a": 1,
+    "b": [
+      1,
+      2
+    ]
+  },
+  "value_undefined": false,
+  "errors": []
+}

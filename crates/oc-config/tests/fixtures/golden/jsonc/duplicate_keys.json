@@ -1,0 +1,8 @@
+{
+  "input": "{\"a\":1,\"a\":2}",
+  "value": {
+    "a": 2
+  },
+  "value_undefined": false,
+  "errors": []
+}

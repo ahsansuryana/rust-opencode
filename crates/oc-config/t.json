@@ -1,0 +1,2 @@
+{
+  "$schema": "https://opencode.ai/config.json","mode": {"plan": {"prompt": "planning"}}, "tools": {"write": false, "webfetch": true}, "autoshare": true, "subagent_depth": 2}

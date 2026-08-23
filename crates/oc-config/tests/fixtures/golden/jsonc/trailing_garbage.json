@@ -1,0 +1,11 @@
+{
+  "input": "{} x",
+  "value": {},
+  "value_undefined": false,
+  "errors": [
+    {
+      "code": "InvalidSymbol",
+      "offset": 3
+    }
+  ]
+}

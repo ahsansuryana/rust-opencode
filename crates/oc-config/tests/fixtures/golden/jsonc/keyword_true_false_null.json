@@ -1,0 +1,10 @@
+{
+  "input": "[true,false,null]",
+  "value": [
+    true,
+    false,
+    null
+  ],
+  "value_undefined": false,
+  "errors": []
+}

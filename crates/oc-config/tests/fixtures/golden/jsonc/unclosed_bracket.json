@@ -1,0 +1,20 @@
+{
+  "input": "{\"a\": [1, 2",
+  "value": {
+    "a": [
+      1,
+      2
+    ]
+  },
+  "value_undefined": false,
+  "errors": [
+    {
+      "code": "CloseBracketExpected",
+      "offset": 11
+    },
+    {
+      "code": "CloseBraceExpected",
+      "offset": 11
+    }
+  ]
+}

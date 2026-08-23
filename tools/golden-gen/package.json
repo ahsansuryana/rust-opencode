@@ -1,0 +1,10 @@
+{
+  "name": "golden-gen",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "jsonc-parser": "3.3.1",
+    "remeda": "2.26.0",
+    "xdg-basedir": "5.1.0"
+  }
+}
