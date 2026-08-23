@@ -2,11 +2,13 @@
 //! tool/external-directory.ts (path safety). Registry minimal generik sesuai
 //! scope sprint (resolusi via allowlist — dependency agent ditunda).
 
+pub mod edit;
 pub mod glob;
 pub mod grep;
 pub mod path_safety;
 pub mod read;
 pub mod ripgrep;
+pub mod truncate;
 pub mod write;
 
 use std::path::{Path, PathBuf};
@@ -148,12 +150,28 @@ impl ToolRegistry {
     pub fn builtin() -> Self {
         ToolRegistry {
             tools: vec![
+                edit::EDIT_TOOL,
                 read::READ_TOOL,
                 write::WRITE_TOOL,
                 glob::GLOB_TOOL,
                 grep::GREP_TOOL,
             ],
         }
+    }
+
+    /// Ported dari registry.ts:291-303 (tools()): filter berbasis model —
+    /// model "gpt-*" (bukan oss/gpt-4) memakai apply_patch menggantikan
+    /// edit+write. apply_patch sendiri menyusul (sprint 6).
+    pub fn tools_for_model(&self, model_id: &str) -> Vec<&ToolDef> {
+        let use_patch =
+            model_id.contains("gpt-") && !model_id.contains("oss") && !model_id.contains("gpt-4");
+        self.tools
+            .iter()
+            .filter(|tool| match tool.id {
+                "edit" | "write" => !use_patch,
+                _ => true,
+            })
+            .collect()
     }
 
     /// Resolusi tool untuk suatu allowlist nama (filter permission agent —

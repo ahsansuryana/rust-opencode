@@ -28,3 +28,18 @@ memiliki list.ts) — asumsi sprint salah; read.ts menangani direktori.
 |---|---|
 | tool/edit.ts (737 baris) | modul terbesar; dikerjakan sebagai sprint-5b agar review per bagian |
 | tool/truncate.ts, registry.ts penuh (agent filtering, permission arity) | butuh Agent/Truncate subsystem (sprint 6/8) |
+
+## Sprint 5b
+
+| TS asli (path:baris) | TS identifier | Rust identifier | Rust lokasi | Catatan |
+|---|---|---|---|---|
+| tool/edit.ts:22-33 | `normalizeLineEndings`,`detectLineEnding`,`convertToLineEnding` | fn sama nama (snake_case) | crates/oc-tool/src/edit.rs | - |
+| edit.ts:47-56 | `Parameters` | validasi manual di `execute` | crates/oc-tool/src/edit.rs | filePath/oldString/newString/replaceAll |
+| edit.ts:244-644 | 9 replacer strategies (`SimpleReplacer`…`MultiOccurrenceReplacer`) + `levenshtein` | `simple_replacer` … `multi_occurrence_replacer`, `levenshtein`, `literal_span` | crates/oc-tool/src/edit.rs | WhitespaceNormalized word-pattern `\s+` direplikasi tanpa regex; threshold similarity identik (0.65) |
+| edit.ts:682-737 | `replace`,`isDisproportionateMatch` | `edit::replace`,`is_disproportionate_match` | crates/oc-tool/src/edit.rs | urutan replacer + guard pesan persis |
+| edit.ts:646-680 | `trimDiff` | `edit::trim_diff` | crates/oc-tool/src/edit.rs | - |
+| edit.ts:58-215 (+write.ts) diff metadata | `createTwoFilesPatch`,`diffLines` | `two_file_patch` (header minimal), `count_changes` (LCS) | crates/oc-tool/src/edit.rs | DEVIASI: patch text bentuk jsdiff penuh tidak direplikasi (metadata saja); angka additions/deletions LCS akurat |
+| util/bom.ts | `Bom.readFile/split/join` | `bom_split`,`bom_join` | crates/oc-tool/src/edit.rs | BOM UTF-8 dipertahankan sumber/baru |
+| tool/truncate.ts | `Truncate.Service` (`output`,`cleanup`,`write`,`limits`), `MAX_LINES/MAX_BYTES` | `truncate::{output,cleanup,MAX_LINES,MAX_BYTES,truncation_dir}` | crates/oc-tool/src/truncate.rs | hint Task-tool menunggu agent permission (sprint 8) — varian plain dipakai; cleanup scheduler hourly menyusul di CLI runtime |
+| truncation-dir.ts | `TRUNCATION_DIR` | `truncation_dir()` | crates/oc-tool/src/truncate.rs | data/tool-output |
+| registry.ts:291-303 | filter `tools(model)` gpt-*/oss/gpt-4 | `ToolRegistry::tools_for_model` | crates/oc-tool/src/lib.rs | aturan apply_patch vs edit+write; tool apply_patch sendiri menyusul sprint 6 |

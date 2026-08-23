@@ -311,3 +311,242 @@ fn path_outside_worktree_triggers_external_directory_ask() {
         .iter()
         .any(|p| p == "external_directory"));
 }
+
+// --- Sprint 5b: edit / truncate / registry model filter ---
+
+use oc_tool::edit;
+
+#[test]
+fn edit_tool_exact_and_strategies() {
+    let _guard = env_lock();
+    let root = temp_dir("edit");
+    setup_xdg(&root);
+    let project = root.join("proj");
+    std::fs::create_dir_all(&project).unwrap();
+    let (ctx, sink) = make_ctx(project.clone(), project.clone());
+    let registry = ToolRegistry::builtin();
+    let target = project.join("code.rs");
+
+    // buat file via oldString="" (file belum ada)
+    registry
+        .get("edit")
+        .unwrap()
+        .run(
+            serde_json::json!({"filePath": target.to_string_lossy(), "oldString": "", "newString": "fn a() {}\nfn b() {}\n"}),
+            &ctx,
+        )
+        .unwrap();
+    assert_eq!(
+        std::fs::read_to_string(&target).unwrap(),
+        "fn a() {}\nfn b() {}\n"
+    );
+
+    // oldString kosong di file existing → error spesifik
+    let err = registry
+        .get("edit")
+        .unwrap()
+        .run(
+            serde_json::json!({"filePath": target.to_string_lossy(), "oldString": "", "newString": "x"}),
+            &ctx,
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("oldString cannot be empty"));
+
+    // replace persis
+    registry
+        .get("edit")
+        .unwrap()
+        .run(
+            serde_json::json!({"filePath": target.to_string_lossy(), "oldString": "fn a() {}", "newString": "fn a2() {}"}),
+            &ctx,
+        )
+        .unwrap();
+    assert!(std::fs::read_to_string(&target)
+        .unwrap()
+        .contains("fn a2() {}"));
+    assert!(sink.asks.lock().unwrap().iter().any(|p| p == "edit"));
+
+    // line-trimmed (indentasi beda)
+    std::fs::write(&target, "    fn indented() {\n        body();\n    }\n").unwrap();
+    registry
+        .get("edit")
+        .unwrap()
+        .run(
+            serde_json::json!({"filePath": target.to_string_lossy(), "oldString": "  fn indented() {\n    body();\n  }", "newString": "  fn renamed() {}"}),
+            &ctx,
+        )
+        .unwrap();
+    assert!(std::fs::read_to_string(&target)
+        .unwrap()
+        .contains("renamed"));
+
+    // whitespace-normalized: jumlah spasi berbeda tapi urutan kata sama
+    std::fs::write(&target, "let   x   =   1;\n").unwrap();
+    registry
+        .get("edit")
+        .unwrap()
+        .run(
+            serde_json::json!({"filePath": target.to_string_lossy(), "oldString": "let x = 1;", "newString": "let y = 2;"}),
+            &ctx,
+        )
+        .unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "let y = 2;\n");
+
+    // multiple match tanpa replaceAll → error; dengan replaceAll → semua
+    std::fs::write(&target, "x\nx\n").unwrap();
+    let err = registry
+        .get("edit")
+        .unwrap()
+        .run(
+            serde_json::json!({"filePath": target.to_string_lossy(), "oldString": "x", "newString": "y"}),
+            &ctx,
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("Found multiple matches"));
+    registry
+        .get("edit")
+        .unwrap()
+        .run(
+            serde_json::json!({"filePath": target.to_string_lossy(), "oldString": "x", "newString": "y", "replaceAll": true}),
+            &ctx,
+        )
+        .unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "y\ny\n");
+
+    // tidak ketemu
+    let err = registry
+        .get("edit")
+        .unwrap()
+        .run(
+            serde_json::json!({"filePath": target.to_string_lossy(), "oldString": "nope-nope", "newString": "z"}),
+            &ctx,
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("Could not find oldString"));
+
+    // CRLF dipertahankan
+    std::fs::write(&target, "a\r\nb\r\n").unwrap();
+    registry
+        .get("edit")
+        .unwrap()
+        .run(
+            serde_json::json!({"filePath": target.to_string_lossy(), "oldString": "a", "newString": "A"}),
+            &ctx,
+        )
+        .unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "A\r\nb\r\n");
+
+    // output sukses persis + metadata filediff
+    std::fs::write(&target, "q\n").unwrap();
+    let result = registry
+        .get("edit")
+        .unwrap()
+        .run(
+            serde_json::json!({"filePath": target.to_string_lossy(), "oldString": "q", "newString": "qq"}),
+            &ctx,
+        )
+        .unwrap();
+    assert_eq!(result.output, "Edit applied successfully.");
+    assert_eq!(result.metadata["filediff"]["additions"], 1);
+    assert_eq!(result.metadata["filediff"]["deletions"], 1);
+}
+
+#[test]
+fn edit_replace_disproportionate_guard() {
+    let content = "start\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\nend\n";
+    let result = edit::replace(content, "start", "s", false);
+    // disproportionate: matched span jauh lebih besar dari oldString
+    // (simple replacer exact match "start" aman)
+    assert!(result.is_ok());
+    let r = edit::replace("aaa\n".repeat(300).as_str(), "aaa", "bbb", true);
+    assert!(r.is_ok());
+}
+
+#[test]
+fn truncate_output_passthrough_and_head_tail() {
+    use oc_tool::truncate::{self, Options, TruncateResult};
+
+    let _guard = env_lock();
+    let root = temp_dir("truncate-env");
+    setup_xdg(&root);
+
+    // muat → utuh
+    let small = "line1\nline2\n";
+    match truncate::output(small, Options::default()).unwrap() {
+        TruncateResult::Content(c) => assert_eq!(c, small),
+        _ => panic!("tidak boleh truncate"),
+    }
+
+    // kelebihan baris → head preview + hint + file tersimpan
+    let big: String = (0..2500)
+        .map(|i| format!("line{i}\n"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let dir_before = std::fs::read_dir(truncate::truncation_dir())
+        .map(|d| d.count())
+        .unwrap_or(0);
+    match truncate::output(&big, Options::default()).unwrap() {
+        TruncateResult::Truncated {
+            content,
+            output_path,
+        } => {
+            assert!(content.contains(" truncated..."), "{content}");
+            assert!(content.contains("Full output saved to:"));
+            assert!(output_path.exists());
+            let dir_now = truncate::truncation_dir();
+            assert!(
+                output_path.starts_with(&dir_now),
+                "out={output_path:?} dir={dir_now:?}"
+            );
+        }
+        _ => panic!("harus truncate"),
+    }
+    let dir_after = std::fs::read_dir(truncate::truncation_dir())
+        .map(|d| d.count())
+        .unwrap_or(0);
+    assert!(dir_after > dir_before);
+
+    // tail direction
+    let marker = "TAIL-MARKER";
+    let text = format!("{}\n{marker}", "filler\n".repeat(2100));
+    match truncate::output(
+        &text,
+        Options {
+            max_lines: Some(5),
+            max_bytes: None,
+            tail: true,
+        },
+    )
+    .unwrap()
+    {
+        TruncateResult::Truncated { content, .. } => {
+            assert!(content.contains(marker), "tail harus menyimpan baris akhir");
+            assert!(content.starts_with("..."));
+        }
+        _ => panic!("harus truncate"),
+    }
+}
+
+#[test]
+fn registry_model_filter_swaps_edit_write_for_gpt() {
+    let registry = ToolRegistry::builtin();
+    let ids_for = |model: &str| -> Vec<String> {
+        registry
+            .tools_for_model(model)
+            .into_iter()
+            .map(|t| t.id.to_string())
+            .collect()
+    };
+
+    let claude = ids_for("claude-sonnet-4-5");
+    assert!(claude.contains(&"edit".to_string()));
+    assert!(claude.contains(&"write".to_string()));
+
+    let gpt5 = ids_for("gpt-5");
+    assert!(!gpt5.contains(&"edit".to_string()));
+    assert!(!gpt5.contains(&"write".to_string()));
+
+    // oss & gpt-4 tetap pakai edit/write
+    assert!(ids_for("gpt-oss-120b").contains(&"edit".to_string()));
+    assert!(ids_for("gpt-4o").contains(&"edit".to_string()));
+}
