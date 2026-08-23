@@ -8,7 +8,7 @@ Status: `not-started` / `in-progress` / `done` / `blocked (alasan)`.
 | 1 | oc-global, oc-config | done | 2026-08-23 | Port global.ts+flag.ts (subset), config loading/merging/schema ConfigV1 lengkap, variable substitute, JSONC parser port jsonc-parser@3.3.1, managed dir. Unit test 33 + golden test vs paket TS asli (jsonc-parser/remeda/xdg-basedir). DITUNDA (lihat DEVIATIONS.md): jalur remote well-known/org console, npm install, discovery agent/command/plugin markdown, write-back update/updateGlobal, tui*.ts; golden loader TS penuh menunggu bun install monorepo yang tidak stabil di lingkungan ini |
 | 2 | oc-auth | done | 2026-08-23 | Port auth/index.ts penuh: enum Info (oauth/api/wellknown, tag type), OPENCODE_AUTH_CONTENT override, normalisasi key strip slash, chmod 0600 unix. Test CRUD/normalisasi/round-trip/permission/env-fallback |
 | 3 | oc-storage | done | 2026-08-23 | Port storage.ts: file-based hierarchical JSON store (read/write/update/list/remove), marker migration + 2 data-migration lengkap (incl. git rev-list helper). CATATAN: source asli BUKAN SQLite — lihat DEVIATIONS. Test CRUD/list/migrasi golden+idempotensi dengan git repo nyata |
-| 4 | oc-permission | not-started | - | - |
+| 4 | oc-permission | done | 2026-08-23 | Port permission/index.ts + arity.ts + wildcard.ts + PermissionV1 contracts: evaluate findLast, ask/reply blocking (Condvar), cascade reject/always per-session, fromConfig expand ~/$HOME, disabled/visibleTools, ARITY table verbatim. 16 unit+integration test, flake-free 8x run |
 | 5 | oc-tool (bag. 1: filesystem) | not-started | - | - |
 | 6 | oc-tool (bag. 2: shell/search/web) | not-started | - | - |
 | 7 | oc-provider | not-started | - | - |

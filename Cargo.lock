@@ -153,6 +153,12 @@ version = "0.1.0"
 [[package]]
 name = "oc-permission"
 version = "0.1.0"
+dependencies = [
+ "oc-config",
+ "serde",
+ "serde_json",
+ "tracing",
+]
 
 [[package]]
 name = "oc-provider"
