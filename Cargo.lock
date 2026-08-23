@@ -169,6 +169,12 @@ version = "0.1.0"
 [[package]]
 name = "oc-storage"
 version = "0.1.0"
+dependencies = [
+ "oc-global",
+ "serde",
+ "serde_json",
+ "tracing",
+]
 
 [[package]]
 name = "oc-tool"

@@ -22,3 +22,9 @@
   - write-back `update`/`updateGlobal` + `patchJsonc` (config.ts:149-173, 624-660) → butuh modify/applyEdits jsonc-parser; target bersama server/TUI.
   - `tui*.ts` seluruhnya → sprint CLI/TUI (15). Hot-reload/watching → scope OUT per SPRINT_01.
 - **Keputusan**: [x] direplikasi apa adanya bagian yang diport; bagian ditunda TIDAK mengubah perilaku bagian yang sudah ada. Pipeline `load_instance_state` melewati langkah yang butuh modul belum di-port persis seperti kondisi "tidak ada auth wellknown / org aktif" di source asli.
+
+## Technical notes (bukan deviation perilaku)
+- [Sprint 3] Sprint mengasumsikan storage = SQLite; source aktual adalah file JSON hierarkis + 2 data-migration + marker. Port mengikuti source aktual; pilihan driver DB (sqlx) ditunda sampai subsystem yang benar-benar pakai SQLite (core database V2) diport.
+- [Sprint 3] `TxReentrantLock` per-target (RcMap Effect fiber) disederhanakan jadi registry RwLock per path — semantik reentrant fiber tidak ada padanan langsung di std thread; perilaku single-thread identik.
+- [Sprint 3] `list()` sort pakai byte-order Rust (bukan localeCompare JS) — urutan bisa beda utk karakter non-ASCII.
+- [Sprint 1] orDie/defect Effect dipetakan ke Result::Err pada boundary crate (lebih graceful); error path jarang tercapai.
