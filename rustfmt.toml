@@ -1,0 +1,4 @@
+# Konfigurasi rustfmt — default masuk akal, dipatok eksplisit supaya hasil
+# format stabil lintas toolchain.
+edition = "2021"
+max_width = 100
