@@ -80,6 +80,8 @@ pub struct PromptLoopInput<'a> {
     pub worktree: &'a std::path::Path,
     pub max_tokens: usize,
     pub max_iterations: usize,
+    /// Cancellation token untuk interrupt loop (opsional).
+    pub cancellation: Option<crate::cancellation::CancellationToken>,
 }
 
 /// Hasil akhir loop.
@@ -156,6 +158,12 @@ pub fn run_prompt_loop(
     loop {
         if iteration >= input.max_iterations {
             break;
+        }
+        if let Some(token) = &input.cancellation {
+            if token.is_cancelled() {
+                finish_reason = Some("aborted".to_string());
+                break;
+            }
         }
         iteration += 1;
 

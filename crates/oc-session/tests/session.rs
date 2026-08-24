@@ -361,6 +361,7 @@ fn prompt_loop_single_tool_call() {
         worktree: &dir,
         max_tokens: 4096,
         max_iterations: 5,
+        cancellation: None,
     };
 
     let messages = vec![serde_json::json!({"role": "user", "content": "read /tmp/f"})];
@@ -386,4 +387,63 @@ fn prompt_loop_single_tool_call() {
         .get_message("ses_loop", &result.assistant_message_id)
         .unwrap();
     assert!(stored.is_some());
+}
+
+// --- Sprint 10b: cancellation ---
+
+#[test]
+fn prompt_loop_cancellation_stops_early() {
+    use oc_session::cancellation::CancellationToken;
+
+    let store = setup_store("cancel");
+    let token = CancellationToken::new();
+
+    // Provider yang selalu return tool_calls (loop tak akan berhenti sendiri)
+    struct InfiniteProvider;
+    impl ProviderClient for InfiniteProvider {
+        fn send(&self, _: &str, _: &str, _: &[Value], _: &[Value]) -> Result<Value, String> {
+            Ok(serde_json::json!({
+                "choices": [{"message": {
+                    "content": null,
+                    "tool_calls": [{
+                        "id": "call_loop",
+                        "function": {"name": "read", "arguments": "{}"}
+                    }]
+                }, "finish_reason": "tool_calls"}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1}
+            }))
+        }
+    }
+
+    // Cancel SEBELUM loop mulai → langsung break di iterasi pertama
+    token.cancel();
+
+    let dir = std::path::PathBuf::from("/tmp/proj");
+    let input = PromptLoopInput {
+        session_id: "ses_cancel",
+        parent_message_id: "msg_p",
+        agent: "build",
+        model_provider_id: "test",
+        model_id: "test",
+        system: "",
+        directory: &dir,
+        worktree: &dir,
+        max_tokens: 4096,
+        max_iterations: 100, // tinggi — tapi cancelled
+        cancellation: Some(token),
+    };
+
+    let provider = InfiniteProvider;
+    struct NoopExecutor;
+    impl ToolExecutor for NoopExecutor {
+        fn execute(&self, _: &str, _: &Value, _: &ToolContext) -> Result<ToolOutput, String> {
+            Ok(ToolOutput::Text("".into()))
+        }
+    }
+    let sender: oc_session::prompt::EventSender = Arc::new(|_| {});
+
+    let result =
+        run_prompt_loop(&store, &provider, &NoopExecutor, &sender, &input, &[], &[]).unwrap();
+
+    assert_eq!(result.finish_reason.as_deref(), Some("aborted"));
 }

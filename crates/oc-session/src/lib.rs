@@ -2,6 +2,7 @@
 //! packages/opencode/src/session/message-v2.ts (Message/WithParts) serta
 //! packages/core/src/session/sql.ts (SessionTable row shape).
 
+pub mod cancellation;
 pub mod model;
 pub mod overflow;
 pub mod prompt;
