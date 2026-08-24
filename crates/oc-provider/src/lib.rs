@@ -3,6 +3,9 @@
 
 pub mod auth;
 pub mod error;
+pub mod messages;
+pub mod transform;
+pub mod transform_messages;
 
 use std::collections::BTreeMap;
 
