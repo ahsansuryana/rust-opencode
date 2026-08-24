@@ -20,4 +20,4 @@ Status: `not-started` / `in-progress` / `done` / `blocked (alasan)`.
 | 13 | oc-mcp | done | 2026-08-24 | Port mcp/index.ts subset: McpStdioClient (stdio JSON-RPC), initialize/list_tools/call_tool/shutdown. OAuth & SSE transport ditunda |
 | 14 | oc-lsp | done | 2026-08-24 | Port lsp/server.ts subset: LspClient (stdio JSON-RPC with Content-Length framing), initialize/did_open/hover/completion. Full LSP features menunggu Sprint 12 server integration |
 | 15 | oc-cli | done | 2026-08-24 | Binary rust-opencode dengan clap: run/sessions/serve commands. TUI interaktif menyusul. Serve command memakai axum router dari oc-server |
-| 16 | (semua) | not-started | - | - |
+| 16 | (semua) | in-progress | 2026-08-24 | cargo check --workspace hijau; test per-crate hijau (kecuali oc-agent flaky karena disk space STATUS_DLL_INIT_FAILED). E2E golden test vs TS asli menunggu env bun stabil. Disk F: hanya ~3.7GB — bersihkan atau pindahkan CARGO_TARGET_DIR sebelum lanjut |
