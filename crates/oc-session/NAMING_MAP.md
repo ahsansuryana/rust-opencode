@@ -19,3 +19,13 @@ Lihat NAMING_MAP di bawah untuk Part types, ToolState, Messages, SessionRow.
 | message-v2.ts | token usage tracking | `TokenUsageResult` accumulation | crates/oc-session/src/prompt.rs | dari response.usage per iterasi |
 | tool/task.ts | TaskTool subagent spawning | DITUNDA ke 10b | - | butuh session-child creation |
 | (cancellation) | abort/interrupt | DITUNDA ke 10b | - | tokio::CancellationToken menyusul |
+
+## Sprint 11
+
+| TS asli (path:baris) | TS identifier | Rust identifier | Rust lokasi | Catatan |
+|---|---|---|---|---|
+| overflow.ts | `usable(cfg,model,outputMax)` | `overflow::usable` | crates/oc-session/src/overflow.rs | COMPACTION_BUFFER=20k; input_limit vs context-maxOutput |
+| overflow.ts | `isOverflow(cfg,tokens,model)` | `overflow::is_overflow` | crates/oc-session/src/overflow.rs | auto=false → false; total ?? sum; >= usable |
+| compaction.ts:28-29 | `PRUNE_MINIMUM`,`PRUNE_PROTECT` | `PRUNE_MINIMUM`,`PRUNE_PROTECT` | crates/oc-session/src/overflow.rs | 20k/40k |
+| compaction.ts | shouldPrune logic | `should_prune` | crates/oc-session/src/overflow.rs | > PRUNE_PROTECT |
+| compaction.ts:166-189 | `Service.isOverflow` | `is_overflow` (free fn) | crates/oc-session/src/overflow.rs | Effect service → free fn |

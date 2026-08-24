@@ -15,7 +15,7 @@ Status: `not-started` / `in-progress` / `done` / `blocked (alasan)`.
 | 8 | oc-agent | done | 2026-08-24 | Port agent.ts: Info struct, 7 built-in agents (build/plan/general/explore/compaction/title/summary) dengan permission rules persis, config override loop, default agent resolution, prompt .txt verbatim via include_str!. 7 test integration |
 | 9 | oc-session (bag. 1: data model) | done | 2026-08-24 | Port schema/v1/session.ts: 12 Part variants (serde tagged), ToolState 4-state, UserOrAssistant messages, WithParts, SessionRow (SQLite table shape), CRUD store (file-based via oc-storage). 5 test round-trip+CRUD |
 | 10 | oc-session (bag. 2: prompt loop) | in-progress | 2026-08-24 | 10a DONE: run_prompt_loop dengan ProviderClient/ToolExecutor traits, MockProvider test (single tool call + final response), event publishing (PartUpdated/ToolExecuted/MessageCompleted), token usage accumulation. 10b sisa: subagent spawning, interrupt/cancellation, multi-tool-call batching, applyCaching wiring |
-| 11 | oc-session (bag. 3: context & compaction) | not-started | - | - |
+| 11 | oc-session (bag. 3: context & compaction) | done | 2026-08-24 | Port overflow.ts: usable(), isOverflow(), PRUNE_MINIMUM/PROTECT constants, should_prune(). ModelLimits struct lokal untuk test tanpa oc-provider dep. Full compaction flow (summarize via LLM) menyusul saat provider HTTP client terhubung ke prompt loop |
 | 12 | oc-server | not-started | - | - |
 | 13 | oc-mcp | not-started | - | - |
 | 14 | oc-lsp | not-started | - | - |

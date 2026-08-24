@@ -3,6 +3,7 @@
 //! packages/core/src/session/sql.ts (SessionTable row shape).
 
 pub mod model;
+pub mod overflow;
 pub mod prompt;
 pub mod store;
 pub mod tool_result;
