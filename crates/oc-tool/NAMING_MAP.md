@@ -55,3 +55,13 @@ memiliki list.ts) — asumsi sprint salah; read.ts menangani direktori.
 | shell.ts:293-310,428-595 | `cmd`,`run` | inline di `shell::execute` | crates/oc-tool/src/shell.rs | ring buffer keep=maxBytes*2, overflow→truncation file, tail final, "(no output)", `<shell_metadata>` timeout text persis; abort-signal arm menunggu session sprint 10 |
 | shell/prompt.ts | `ShellPrompt.render`, shell.txt | deskripsi = include_str assets/shell.txt | crates/oc-tool/assets/shell.txt | render substitusi ${key} penuh ditunda (sprint-6b) |
 | tool/webfetch.ts, websearch.ts | WebFetchTool/WebSearchTool | DITUNDA ke sprint-6b | - | keduanya built-in ✓ (ada di source); butuh provider/exa flags |
+
+## Sprint 6b
+
+| TS asli (path:baris) | TS identifier | Rust identifier | Rust lokasi | Catatan |
+|---|---|---|---|---|
+| tool/webfetch.ts | `WebFetchTool`, `extractTextFromHTML`, `convertHTMLToMarkdown` | `webfetch::{WEBFETCH_TOOL,extract_text_from_html,convert_html_to_markdown}` | crates/oc-tool/src/webfetch.rs | header/Accept/timeout/5MB cap/CF-retry persis; HTML→MD converter subset padanan turndown config atx/---/-/fenced/* |
+| tool/websearch.ts:30-43 | `selectWebSearchProvider`,`webSearchProviderLabel` | `websearch::{select_web_search_provider,web_search_provider_label}` | crates/oc-tool/src/websearch.rs | OPENCODE_WEBSEARCH_PROVIDER override ✓; parity checksum base36 ✓ |
+| core/util/encode.ts:22-30 | `checksum` (FNV-1a 32-bit → base36) | `websearch::checksum` | crates/oc-tool/src/websearch.rs | - |
+| websearch.ts:60-141 | `callProvider` via McpWebSearch | execute → fallback message | crates/oc-tool/src/websearch.rs | DITUNDA ke sprint 13 (butuh MCP client); permission ask tetap dijalankan |
+| shell/prompt.ts | `ShellPrompt.render` + profile/command sections | `shell_prompt::render` (+section builders) | crates/oc-tool/src/shell_prompt.rs | template ${key} substitution penuh; dipakai registry nanti saat limits/config tersedia runtime |

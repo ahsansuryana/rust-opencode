@@ -10,3 +10,4 @@ oc-global = { path = "../oc-global" }
 oc-permission = { path = "../oc-permission" }
 serde_json = { workspace = true }
 tracing = { workspace = true }
+ureq = "2"

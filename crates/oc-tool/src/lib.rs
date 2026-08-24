@@ -11,6 +11,8 @@ pub mod ripgrep;
 pub mod shell;
 pub mod shell_detect;
 pub mod truncate;
+pub mod webfetch;
+pub mod websearch;
 pub mod write;
 
 use std::path::{Path, PathBuf};
@@ -154,6 +156,8 @@ impl ToolRegistry {
             tools: vec![
                 shell::SHELL_TOOL,
                 edit::EDIT_TOOL,
+                webfetch::WEBFETCH_TOOL,
+                websearch::WEBSEARCH_TOOL,
                 read::READ_TOOL,
                 write::WRITE_TOOL,
                 glob::GLOB_TOOL,

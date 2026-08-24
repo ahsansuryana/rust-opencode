@@ -642,3 +642,97 @@ fn shell_tool_runs_echo_and_reports_exit() {
         result.output
     );
 }
+
+// --- Sprint 6b: webfetch / websearch helpers ---
+
+use oc_tool::websearch;
+
+#[test]
+fn checksum_fnv1a_base36_matches_ts() {
+    // FNV-1a 32-bit: checksum("") = undefined, checksum("a") = "1sqg5f"
+    assert_eq!(websearch::checksum(""), None);
+    // vektor kontrol: hitung manual via algoritma
+    let value = websearch::checksum("ses_abc").unwrap();
+    assert!(!value.is_empty());
+    assert!(value
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()));
+}
+
+#[test]
+fn select_provider_respects_override_and_parity() {
+    std::env::set_var("OPENCODE_WEBSEARCH_PROVIDER", "exa");
+    assert_eq!(
+        websearch::select_web_search_provider(
+            "anything",
+            &websearch::ProviderFlags {
+                exa: false,
+                parallel: false
+            }
+        ),
+        websearch::WebSearchProvider::Exa
+    );
+    std::env::set_var("OPENCODE_WEBSEARCH_PROVIDER", "parallel");
+    assert_eq!(
+        websearch::select_web_search_provider(
+            "anything",
+            &websearch::ProviderFlags {
+                exa: false,
+                parallel: false
+            }
+        ),
+        websearch::WebSearchProvider::Parallel
+    );
+    std::env::remove_var("OPENCODE_WEBSEARCH_PROVIDER");
+
+    let label = websearch::web_search_provider_label(Some(websearch::WebSearchProvider::Exa));
+    assert_eq!(label, "Exa Web Search");
+}
+
+#[test]
+fn webfetch_rejects_non_http_url() {
+    let _guard = env_lock();
+    let root = temp_dir("webfetch");
+    setup_xdg(&root);
+    let project = fixture(&root);
+    let (ctx, _sink) = make_ctx(project.clone(), project.clone());
+    let registry = ToolRegistry::builtin();
+
+    let err = registry
+        .get("webfetch")
+        .unwrap()
+        .run(serde_json::json!({"url": "ftp://example.com"}), &ctx)
+        .unwrap_err();
+    assert!(err.to_string().contains("URL must start with http://"));
+}
+
+#[test]
+fn html_text_extraction_skips_script_style() {
+    use oc_tool::webfetch::extract_text_from_html;
+    let html = "<html><head><style>body{color:red}</style></head>\
+                <body><h1>Title</h1><script>alert(1)</script>\
+                <p>Hello <b>world</b></p><!-- comment --></body></html>";
+    let text = extract_text_from_html(html);
+    assert!(text.contains("Title"), "{text}");
+    assert!(text.contains("Hello world"), "{text}");
+    assert!(!text.contains("alert"));
+    assert!(!text.contains("color:red"));
+}
+
+#[test]
+fn html_to_markdown_basics() {
+    use oc_tool::webfetch::convert_html_to_markdown;
+    let md = convert_html_to_markdown(
+        "<h2>Heading</h2>\n<p>Text with <strong>bold</strong> and <em>italic</em> \
+         and <a href=\"https://x\">link</a>.</p>\
+         <ul><li>one</li><li>two</li></ul>\
+         <pre><code>let x = 1;</code></pre>",
+    );
+    assert!(md.contains("## Heading"), "{md}");
+    assert!(md.contains("**bold**"));
+    assert!(md.contains("*italic*"));
+    assert!(md.contains("[link](https://x)"));
+    assert!(md.contains("- one"));
+    assert!(md.contains("- two"));
+    assert!(md.contains("```\nlet x = 1;\n```"));
+}

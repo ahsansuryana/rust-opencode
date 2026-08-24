@@ -35,3 +35,5 @@
 - [Sprint 5] Golden "jalankan tool TS asli" ditunda (bun install monorepo tidak stabil di lingkungan ini); output string direplikasi dari bacaan source dan diuji lewat fixture Rust.
 - [Sprint 6a] Scan command ShellTool memakai tokenizer sederhana, bukan tree-sitter bash/powershell grammar — pattern permission utk command kompleks bisa beda dari TS; eksekusi/output format identik.
 - [Sprint 6a] Abort signal (user cancel mid-command) belum terhubung (butuh session loop sprint 10); timeout kill sudah aktif.
+- [Sprint 6b] WebFetch HTML-to-Markdown memakai converter internal subset (turndown penuh tidak diport); struktur umum (heading/list/link/code/emphasis/blockquote/hr/img) dicakup.
+- [Sprint 6b] WebSearch execute belum memanggil provider exa/parallel (butuh MCP client, sprint 13) — mengembalikan fallback message persis kondisi hasil kosong TS.
