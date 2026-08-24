@@ -649,7 +649,7 @@ fn count_changes(old_text: &str, new_text: &str) -> (u64, u64) {
 }
 
 /// Padanan createTwoFilesPatch + trimDiff — header minimal + hunk konten.
-fn two_file_patch(old_text: &str, new_text: &str) -> String {
+pub fn two_file_patch(old_text: &str, new_text: &str) -> String {
     let mut lines = vec!["--- a/file".to_string(), "+++ b/file".to_string()];
     // unified-ish: semua -old lalu +new (tanpa alignment LCS penuh; cukup untuk
     // metadata diff — catatan di NAMING_MAP)

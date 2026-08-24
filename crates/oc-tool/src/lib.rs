@@ -2,9 +2,11 @@
 //! tool/external-directory.ts (path safety). Registry minimal generik sesuai
 //! scope sprint (resolusi via allowlist — dependency agent ditunda).
 
+pub mod apply_patch;
 pub mod edit;
 pub mod glob;
 pub mod grep;
+pub mod patch;
 pub mod path_safety;
 pub mod read;
 pub mod ripgrep;
@@ -155,6 +157,7 @@ impl ToolRegistry {
         ToolRegistry {
             tools: vec![
                 shell::SHELL_TOOL,
+                apply_patch::APPLY_PATCH_TOOL,
                 edit::EDIT_TOOL,
                 webfetch::WEBFETCH_TOOL,
                 websearch::WEBSEARCH_TOOL,
@@ -176,6 +179,7 @@ impl ToolRegistry {
             .iter()
             .filter(|tool| match tool.id {
                 "edit" | "write" => !use_patch,
+                "apply_patch" => use_patch,
                 _ => true,
             })
             .collect()

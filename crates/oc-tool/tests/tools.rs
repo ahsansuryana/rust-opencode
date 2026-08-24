@@ -736,3 +736,146 @@ fn html_to_markdown_basics() {
     assert!(md.contains("- two"));
     assert!(md.contains("```\nlet x = 1;\n```"));
 }
+
+// --- Sprint 6 (tail): apply_patch tool ---
+
+use oc_tool::patch;
+
+#[test]
+fn patch_parse_and_derive_contents() {
+    let patch_text = "*** Begin Patch\n*** Update File: a.txt\n@@\n-old line\n+new line\n*** Add File: b.txt\n+hello\n*** Delete File: c.txt\n*** End Patch";
+    let hunks = patch::parse_patch(patch_text).unwrap();
+    assert_eq!(hunks.len(), 3);
+    match &hunks[0] {
+        patch::Hunk::Update { path, chunks, .. } => {
+            assert_eq!(path, "a.txt");
+            assert_eq!(chunks.len(), 1);
+            assert_eq!(chunks[0].old_lines, vec!["old line".to_string()]);
+            assert_eq!(chunks[0].new_lines, vec!["new line".to_string()]);
+        }
+        other => panic!("hunk pertama harus update: {other:?}"),
+    }
+    match &hunks[1] {
+        patch::Hunk::Add { path, contents } => {
+            assert_eq!(path, "b.txt");
+            assert_eq!(contents, "hello");
+        }
+        other => panic!("hunk kedua harus add: {other:?}"),
+    }
+
+    // marker hilang → error
+    let err = patch::parse_patch("tanpa marker").unwrap_err();
+    assert!(err.to_string().contains("missing Begin/End markers"));
+
+    // derive contents: exact match
+    let update = patch::derive_new_contents_from_chunks(
+        Path::new("a.txt"),
+        &[patch::UpdateFileChunk {
+            old_lines: vec!["line2".into()],
+            new_lines: vec!["LINE2".into()],
+            change_context: None,
+            is_end_of_file: false,
+        }],
+        "line1\nline2\nline3\n",
+    )
+    .unwrap();
+    assert_eq!(update.content, "line1\nLINE2\nline3\n");
+
+    // fuzzy rstrip match
+    let update = patch::derive_new_contents_from_chunks(
+        Path::new("a.txt"),
+        &[patch::UpdateFileChunk {
+            old_lines: vec!["line1   ".into()],
+            new_lines: vec!["first".into()],
+            change_context: None,
+            is_end_of_file: false,
+        }],
+        "line1\nline2\n",
+    )
+    .unwrap();
+    assert_eq!(update.content, "first\nline2\n");
+
+    // context tidak ketemu → error
+    let err = patch::derive_new_contents_from_chunks(
+        Path::new("a.txt"),
+        &[patch::UpdateFileChunk {
+            old_lines: vec!["zzz".into()],
+            new_lines: vec![],
+            change_context: Some("no-such-context".into()),
+            is_end_of_file: false,
+        }],
+        "line1\n",
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("Failed to find context"));
+}
+
+#[test]
+fn apply_patch_tool_end_to_end() {
+    let _guard = env_lock();
+    let root = temp_dir("apply-patch");
+    setup_xdg(&root);
+    let project = fixture(&root);
+    let (ctx, sink) = make_ctx(project.clone(), project.clone());
+    let registry = ToolRegistry::builtin();
+
+    // update + add + delete dalam satu patch
+    let patch_text = concat!(
+        "*** Begin Patch\n",
+        "*** Update File: src/main.rs\n",
+        "@@\n",
+        "-fn main() {\n",
+        "+fn main() {\n",
+        "+    println!(\"patched\");\n",
+        "*** Add File: docs/new.md\n",
+        "+# New Doc\n",
+        "*** Delete File: README.md\n",
+        "*** End Patch"
+    );
+    let result = registry
+        .get("apply_patch")
+        .unwrap()
+        .run(serde_json::json!({ "patchText": patch_text }), &ctx)
+        .unwrap();
+
+    // isi file ter-update
+    let main_rs = std::fs::read_to_string(project.join("src/main.rs")).unwrap();
+    assert!(main_rs.contains("patched"), "{main_rs}");
+    assert!(std::fs::read_to_string(project.join("docs/new.md"))
+        .unwrap()
+        .contains("# New Doc"));
+    assert!(!project.join("README.md").exists());
+
+    // output summary format persis
+    let expected =
+        "Success. Updated the following files:\nM src/main.rs\nA docs/new.md\nD README.md";
+    assert_eq!(result.output, expected, "{}", result.output);
+    assert!(result.title.starts_with("Success."));
+
+    // permission edit diminta dengan multi-pattern
+    let asks = sink.asks.lock().unwrap();
+    assert!(asks.iter().any(|p| p == "edit"));
+
+    // registry filter: model gpt-* memakai apply_patch menggantikan edit/write
+    let ids_for = |model: &str| -> Vec<String> {
+        registry
+            .tools_for_model(model)
+            .into_iter()
+            .map(|t| t.id.to_string())
+            .collect()
+    };
+    assert!(ids_for("gpt-5").contains(&"apply_patch".to_string()));
+    assert!(!ids_for("gpt-5").contains(&"edit".to_string()));
+    assert!(!ids_for("claude-x").contains(&"apply_patch".to_string()));
+
+    // patch kosong
+    let err = registry
+        .get("apply_patch")
+        .unwrap()
+        .run(
+            serde_json::json!({"patchText": "*** Begin Patch\n*** End Patch"}),
+            &ctx,
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("empty patch"));
+}

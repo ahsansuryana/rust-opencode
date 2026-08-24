@@ -65,3 +65,12 @@ memiliki list.ts) — asumsi sprint salah; read.ts menangani direktori.
 | core/util/encode.ts:22-30 | `checksum` (FNV-1a 32-bit → base36) | `websearch::checksum` | crates/oc-tool/src/websearch.rs | - |
 | websearch.ts:60-141 | `callProvider` via McpWebSearch | execute → fallback message | crates/oc-tool/src/websearch.rs | DITUNDA ke sprint 13 (butuh MCP client); permission ask tetap dijalankan |
 | shell/prompt.ts | `ShellPrompt.render` + profile/command sections | `shell_prompt::render` (+section builders) | crates/oc-tool/src/shell_prompt.rs | template ${key} substitution penuh; dipakai registry nanti saat limits/config tersedia runtime |
+
+## Sprint 6 (penutup)
+
+| TS asli (path:baris) | TS identifier | Rust identifier | Rust lokasi | Catatan |
+|---|---|---|---|---|
+| patch/index.ts:19-29,70-241 | `Hunk`,`UpdateFileChunk`,`parsePatch` (+header/chunks/add helpers, `stripHeredoc`) | `patch::{Hunk,UpdateFileChunk,parse_patch}` + helper privat | crates/oc-tool/src/patch.rs | format codex "*** Begin/End Patch" lengkap |
+| patch/index.ts:342-511 | `computeReplacements`,`applyReplacements`,`seekSequence`,`tryMatch`,`normalizeUnicode`,`deriveNewContentsFromChunks`,`generateUnifiedDiff` | fn sama nama (snake_case) | crates/oc-tool/src/patch.rs | 4-pass matcher exact/rstrip/trim/unicode-normalized persis |
+| tool/apply_patch.ts | `ApplyPatchTool` (+Bom) | `apply_patch::APPLY_PATCH_TOOL` | crates/oc-tool/src/apply_patch.rs | add/update/move/delete, permission edit multi-pattern w/ files metadata, summary "Success. Updated..." persis; LSP/format/watcher ditunda |
+| shell.ts:349-367 | `cygpath`,`resolvePath` | `shell::{cygpath,resolve_path}` | crates/oc-tool/src/shell.rs | dipakai utk workdir di Windows+posix-shell |

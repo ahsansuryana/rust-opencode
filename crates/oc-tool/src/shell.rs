@@ -99,6 +99,43 @@ fn tokenize(command: &str) -> Vec<String> {
     tokens
 }
 
+/// Ported from: shell.ts:349-356 (cygpath) — konversi path POSIX → Windows
+/// memakai shell login (hanya relevan di Windows dgn bash/git-bash).
+fn cygpath(shell: &str, text: &str) -> Option<String> {
+    let output = std::process::Command::new(shell)
+        .args(["-lc", "cygpath -w -- \"$1\"", "_", text])
+        .output()
+        .ok()?;
+    let first = String::from_utf8_lossy(&output.stdout);
+    let file = first.lines().next()?.trim().to_string();
+    if file.is_empty() {
+        None
+    } else {
+        Some(file.replace('/', "\\"))
+    }
+}
+
+/// Ported from: shell.ts:358-367 (resolvePath)
+fn resolve_path(text: &str, root: &Path, shell: &str) -> PathBuf {
+    if cfg!(windows) {
+        let posix = crate::shell_detect::posix(shell);
+        let starts_slash = text.starts_with('/');
+        let unchanged = {
+            // FSUtil.windowsPath(text) === text pada Windows selalu true
+            // (fungsi hanya menormalkan prefix /mnt//cygdrive di non-win32
+            //  build — di sini identitas)
+            starts_slash
+        };
+        if posix && starts_slash && unchanged {
+            if let Some(file) = cygpath(shell, text) {
+                return PathBuf::from(file);
+            }
+        }
+        return resolve(root, text);
+    }
+    resolve(root, text)
+}
+
 /// Ported dari expand()/home(): ~ dan $HOME/PWD.
 fn expand_basic(text: &str, cwd: &Path) -> String {
     let unquoted = text.trim_matches(|c| c == '"' || c == '\'');
@@ -271,7 +308,7 @@ pub fn execute(params: &serde_json::Value, ctx: &Context) -> Result<ExecuteResul
     let cmd_kind = name == "cmd";
 
     let cwd = match params.get("workdir").and_then(serde_json::Value::as_str) {
-        Some(workdir) => resolve(&ctx.directory, workdir),
+        Some(workdir) => resolve_path(workdir, &ctx.directory, &shell),
         None => ctx.directory.clone(),
     };
 
