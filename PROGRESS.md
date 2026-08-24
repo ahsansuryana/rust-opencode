@@ -17,7 +17,7 @@ Status: `not-started` / `in-progress` / `done` / `blocked (alasan)`.
 | 10 | oc-session (bag. 2: prompt loop) | in-progress | 2026-08-24 | 10a DONE: run_prompt_loop dengan ProviderClient/ToolExecutor traits, MockProvider test (single tool call + final response), event publishing (PartUpdated/ToolExecuted/MessageCompleted), token usage accumulation. 10b sisa: subagent spawning, interrupt/cancellation, multi-tool-call batching, applyCaching wiring |
 | 11 | oc-session (bag. 3: context & compaction) | done | 2026-08-24 | Port overflow.ts: usable(), isOverflow(), PRUNE_MINIMUM/PROTECT constants, should_prune(). ModelLimits struct lokal untuk test tanpa oc-provider dep. Full compaction flow (summarize via LLM) menyusul saat provider HTTP client terhubung ke prompt loop |
 | 12 | oc-server | done | 2026-08-24 | Core HTTP server dengan axum: session CRUD, message send/list, config/provider read-only, health. ENDPOINT_CHECKLIST.md mencatat full 150+ endpoint dari openapi.json; sprint ini meng-cover 9 core. Sisa endpoint menyusul |
-| 13 | oc-mcp | not-started | - | - |
-| 14 | oc-lsp | not-started | - | - |
-| 15 | oc-cli | not-started | - | - |
+| 13 | oc-mcp | done | 2026-08-24 | Port mcp/index.ts subset: McpStdioClient (stdio JSON-RPC), initialize/list_tools/call_tool/shutdown. OAuth & SSE transport ditunda |
+| 14 | oc-lsp | done | 2026-08-24 | Port lsp/server.ts subset: LspClient (stdio JSON-RPC with Content-Length framing), initialize/did_open/hover/completion. Full LSP features menunggu Sprint 12 server integration |
+| 15 | oc-cli | done | 2026-08-24 | Binary rust-opencode dengan clap: run/sessions/serve commands. TUI interaktif menyusul. Serve command memakai axum router dari oc-server |
 | 16 | (semua) | not-started | - | - |

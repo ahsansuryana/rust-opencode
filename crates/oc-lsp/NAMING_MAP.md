@@ -1,7 +1,6 @@
 # Naming Map — oc-lsp
 
-Format tabel sesuai `rust-opencode-plan/01_NAMING_CONVENTION.md`.
-Sprint yang sudah mengisi tabel ini: (belum ada).
-
-| TS asli (path:baris) | TS identifier | Rust identifier | Rust lokasi | Catatan |
-|---|---|---|---|---|
+| TS asli | TS identifier | Rust identifier | Catatan |
+|---|---|---|---|
+| lsp/server.ts | LSP client (stdio JSON-RPC) | `LspClient` | spawn/initialize/did_open/hover/completion/shutdown |
+| v1/config/lsp.ts:5-61 | `Disabled`,`Entry`,`builtinServerIds` | DITUNDA ke sprint LSP penuh | config types sudah di oc-config |

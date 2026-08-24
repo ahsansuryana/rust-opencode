@@ -1,7 +1,6 @@
 # Naming Map — oc-mcp
 
-Format tabel sesuai `rust-opencode-plan/01_NAMING_CONVENTION.md`.
-Sprint yang sudah mengisi tabel ini: (belum ada).
-
-| TS asli (path:baris) | TS identifier | Rust identifier | Rust lokasi | Catatan |
-|---|---|---|---|---|
+| TS asli | TS identifier | Rust identifier | Catatan |
+|---|---|---|---|
+| mcp/index.ts | MCP client (stdio) | `McpStdioClient` | spawn/send/read/initialize/list_tools/call_tool/shutdown |
+| core/v1/config/mcp.ts | `McpLocal`/`McpRemote` | `McpServerConfig` enum | Local{command,cwd,env,enabled,timeout} / Remote{url,enabled,headers} |
