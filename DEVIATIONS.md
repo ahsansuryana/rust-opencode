@@ -37,3 +37,5 @@
 - [Sprint 6a] Abort signal (user cancel mid-command) belum terhubung (butuh session loop sprint 10); timeout kill sudah aktif.
 - [Sprint 6b] WebFetch HTML-to-Markdown memakai converter internal subset (turndown penuh tidak diport); struktur umum (heading/list/link/code/emphasis/blockquote/hr/img) dicakup.
 - [Sprint 6b] WebSearch execute belum memanggil provider exa/parallel (butuh MCP client, sprint 13) — mengembalikan fallback message persis kondisi hasil kosong TS.
+- [Sprint 7] Vercel AI SDK tidak direplikasi — HTTP client per-provider dibangun langsung mengikuti API resmi (Anthropic Messages / OpenAI Chat Completions); field `api` pada Model dipertahankan sebagai JSON passthrough.
+- [Sprint 7] Plugin auth hooks (`Hooks["auth"]`) menunggu subsystem plugin sprint lanjutan; `ProviderAuth.methods()` saat ini kosong.

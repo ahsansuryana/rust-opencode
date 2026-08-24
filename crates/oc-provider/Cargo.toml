@@ -5,3 +5,8 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+oc-auth = { path = "../oc-auth" }
+oc-config = { path = "../oc-config" }
+oc-global = { path = "../oc-global" }
+serde = { workspace = true }
+serde_json = { workspace = true }

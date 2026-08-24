@@ -367,6 +367,13 @@ dependencies = [
 [[package]]
 name = "oc-provider"
 version = "0.1.0"
+dependencies = [
+ "oc-auth",
+ "oc-config",
+ "oc-global",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "oc-server"
