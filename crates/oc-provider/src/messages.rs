@@ -39,6 +39,12 @@ pub enum OutputItem {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct PartWithOpts {
+    pub part: Part,
+    pub provider_options: Option<Map<String, Value>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Part {
     Text {
         text: String,

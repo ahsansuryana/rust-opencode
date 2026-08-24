@@ -373,6 +373,7 @@ dependencies = [
  "oc-global",
  "serde",
  "serde_json",
+ "ureq",
 ]
 
 [[package]]

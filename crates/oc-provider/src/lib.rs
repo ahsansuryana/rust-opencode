@@ -3,9 +3,12 @@
 
 pub mod auth;
 pub mod error;
+pub mod http_client;
 pub mod messages;
 pub mod transform;
 pub mod transform_messages;
+pub mod transform_pipeline;
+pub mod variants;
 
 use std::collections::BTreeMap;
 

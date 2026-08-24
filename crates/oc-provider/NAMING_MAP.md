@@ -44,3 +44,17 @@ client menyusul.
 | transform.ts:709-1155 | `variants()` (switch per-npm) | DITUNDA ke 7c (butuh options() juga) | - | ~400 baris switch; port setelah message() selesai |
 | transform.ts:1157-1350 | `options()`,`smallOptions` | DITUNDA ke 7c | - | butuh sessionID/providerOptions input type |
 | transform.ts:1429-1652 | `sanitizeOpenAISchema`,`schema()` (moonshot/gemini sanitizers) | `transform::{schema,sanitize_openai_schema}` + helper privat | crates/oc-provider/src/transform.rs | boolean→string, const→enum, intent-inference, moonshot $ref+items flatten, gemini enum-to-string/type-array→anyOf/required-filter/non-object-cleanup ✓ |
+
+## Sprint 7c
+
+| TS asli (path:baris) | TS identifier | Rust identifier | Rust lokasi | Catatan |
+|---|---|---|---|---|
+| transform.ts:359-408 | `applyCaching` | `transform_pipeline::apply_caching` | crates/oc-provider/src/transform_pipeline.rs | system+final(2) msg cache options; content-level menunggu Part.provider_options (S9) |
+| transform.ts:410-446 | `unsupportedParts` | `transform_pipeline::unsupported_parts` | crates/oc-provider/src/transform_pipeline.rs | image/file → text error bila modality tak didukung |
+| transform.ts:448-464 | `mapProviderOptions` | `transform_pipeline::map_provider_options` | crates/oc-provider/src/transform_pipeline.rs | part-level opts menunggu S9 |
+| transform.ts:466-519 | `message()` pipeline | `transform_pipeline::message` | crates/oc-provider/src/transform_pipeline.rs | orchestrator utuh |
+| transform.ts:727-1155 | `variants()` switch | `variants::variants` | crates/oc-provider/src/variants.rs | semua cabang per-npm (anthropic/openai/google/gateway/copilot/azure/bedrock/mistral/groq/openrouter/cerebras/togetherai/xai/deepinfra/venice/compatible) ✓; SAP provider ditunda |
+| transform.ts:709-725 | `googleThinkingVariants` | `variants::google_thinking_variants` | crates/oc-provider/src/variants.rs | - |
+| core/shell.ts args() | `Shell.args(shell,cmd,cwd)` | `shell_detect::exec_args` (sudah di S6a) | - | zsh/bash profile scripts persis |
+| core/shell.ts:131-224 | `Shell.acceptable/name/ps` | `shell_detect::{acceptable,shell_name,ps}` | crates/oc-tool/src/shell_detect.rs | sudah di S6a |
+| (HTTP client) | Vercel AI SDK replacement | `http_client::{anthropic_send,anthropic_send_streaming,openai_send,openai_send_streaming,parse_anthropic_response,parse_openai_response,resolve_api_key,parse_sse_body}` | crates/oc-provider/src/http_client.rs | ureq blocking SSE; async/tokio menyusul Sprint 10 |

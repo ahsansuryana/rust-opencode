@@ -10,3 +10,4 @@ oc-config = { path = "../oc-config" }
 oc-global = { path = "../oc-global" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+ureq = "2"

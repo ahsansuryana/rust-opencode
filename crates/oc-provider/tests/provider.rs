@@ -408,3 +408,83 @@ fn schema_sanitizers() {
     assert_eq!(required.len(), 1);
     assert_eq!(required[0], "n");
 }
+
+// --- Sprint 7c: variants + HTTP client helpers ---
+
+use oc_provider::variants::variants;
+
+#[test]
+fn variants_anthropic_budget_tokens() {
+    let mut m = make_model("claude-sonnet-4-20250514", "@ai-sdk/anthropic");
+    m.capabilities.reasoning = true;
+    m.limit.output = 8192;
+    let v = variants(&m);
+    // bukan adaptive → budgetTokens high/max
+    assert!(v.contains_key("high"), "{v:?}");
+    assert!(v.contains_key("max"), "{v:?}");
+    let high = &v["high"];
+    assert_eq!(high["thinking"]["type"], "enabled");
+    assert_eq!(high["thinking"]["budgetTokens"], 4095); // min(16000, 8192/2-1)
+}
+
+#[test]
+fn variants_anthropic_adaptive_47() {
+    let mut m = make_model("claude-opus-4.7", "@ai-sdk/anthropic");
+    m.capabilities.reasoning = true;
+    let v = variants(&m);
+    // modern adaptive → low/medium/high/xhigh/max dengan display summarized
+    for effort in ["low", "medium", "high", "xhigh", "max"] {
+        assert!(v.contains_key(effort), "missing {effort} in {v:?}");
+        assert_eq!(v[effort]["thinking"]["type"], "adaptive");
+        assert_eq!(v[effort]["thinking"]["display"], "summarized");
+    }
+}
+
+#[test]
+fn variants_gpt5_openai_efforts() {
+    let mut m = make_model("gpt-5", "@ai-sdk/openai");
+    m.capabilities.reasoning = true;
+    m.release_date = "2025-08-01".into();
+    let v = variants(&m);
+    // gpt-5 tanpa versi: minimal + widely
+    for effort in ["minimal", "low", "medium", "high"] {
+        assert!(v.contains_key(effort), "missing {effort}");
+        assert_eq!(v[effort]["reasoningEffort"], effort);
+        assert_eq!(v[effort]["reasoningSummary"], "auto");
+    }
+    // tanpa none (sebelum release date) dan tanpa xhigh
+    assert!(!v.contains_key("none"));
+    assert!(!v.contains_key("xhigh"));
+}
+
+#[test]
+fn sse_parser() {
+    use oc_provider::http_client::{parse_sse_body, SseEvent};
+    let body = "event: message_start\ndata: {\"type\":\"message_start\"}\n\n\
+                data: [DONE]\n";
+    let events = parse_sse_body(body);
+    assert_eq!(events.len(), 2);
+    match &events[0] {
+        SseEvent::Data(v) => assert_eq!(v["type"], "message_start"),
+        _ => panic!("harus Data"),
+    }
+    assert!(matches!(events[1], SseEvent::Done));
+}
+
+#[test]
+fn anthropic_request_body_shape() {
+    use oc_provider::http_client::anthropic_request_body;
+    let mut model = make_model("claude-sonnet-4-20250514", "@ai-sdk/anthropic");
+    model.limit.output = 4096;
+    model.capabilities.reasoning = true;
+
+    let messages = vec![serde_json::json!({"role": "user", "content": "hello"})];
+    let options = serde_json::Map::new();
+    let body = anthropic_request_body(&model, "You are helpful.", &messages, &[], 2048, &options);
+    assert_eq!(body["model"], "claude-sonnet-4-20250514");
+    assert_eq!(body["max_tokens"], 2048);
+    assert_eq!(body["system"], "You are helpful.");
+    assert_eq!(body["messages"].as_array().unwrap().len(), 1);
+    // claude → temperature tidak diset (None)
+    assert!(body.get("temperature").is_none());
+}
