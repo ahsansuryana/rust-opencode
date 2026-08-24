@@ -389,6 +389,12 @@ version = "0.1.0"
 [[package]]
 name = "oc-session"
 version = "0.1.0"
+dependencies = [
+ "oc-global",
+ "oc-storage",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "oc-storage"
