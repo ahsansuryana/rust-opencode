@@ -3,6 +3,7 @@
 use oc_session::model::*;
 use oc_session::store::SessionStore;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 fn base_ids(session_id: &str, message_id: &str, part_num: u32) -> BaseIds {
     BaseIds {
@@ -272,4 +273,117 @@ fn crud_sessions_and_messages() {
 
     store.remove_session("ses_test").unwrap();
     assert!(store.get_session("ses_test").unwrap().is_none());
+}
+
+// --- Sprint 10: prompt loop ---
+use serde_json::Value;
+
+use oc_session::prompt::{
+    run_prompt_loop, PromptLoopInput, ProviderClient, ToolContext, ToolExecutor,
+};
+use oc_session::tool_result::ToolOutput;
+
+struct MockProvider {
+    responses: std::sync::Mutex<std::vec::IntoIter<Value>>,
+}
+
+impl ProviderClient for MockProvider {
+    fn send(
+        &self,
+        _model: &str,
+        _sys: &str,
+        _msgs: &[Value],
+        _tools: &[Value],
+    ) -> Result<Value, String> {
+        let mut guard = self.responses.lock().unwrap();
+        guard
+            .next()
+            .ok_or_else(|| "no more mock responses".to_string())
+    }
+}
+
+struct MockExecutor;
+
+impl ToolExecutor for MockExecutor {
+    fn execute(&self, tool: &str, _args: &Value, _ctx: &ToolContext) -> Result<ToolOutput, String> {
+        match tool {
+            "read" => Ok(ToolOutput::Text("file content here".into())),
+            other => Err(format!("unknown tool: {other}")),
+        }
+    }
+}
+
+#[test]
+fn prompt_loop_single_tool_call() {
+    let store = setup_store("loop");
+
+    let mock_responses = vec![
+        // iterasi 1: tool call
+        serde_json::json!({
+            "choices": [{"message": {
+                "content": null,
+                "tool_calls": [{
+                    "id": "call_1",
+                    "function": {"name": "read", "arguments": "{\"filePath\": \"/tmp/f\"}"}
+                }]
+            }, "finish_reason": "tool_calls"}],
+            "usage": {"prompt_tokens": 50, "completion_tokens": 20}
+        }),
+        // iterasi 2: final response
+        serde_json::json!({
+            "choices": [{"message": {
+                "content": "Here is the file content.",
+                "tool_calls": null
+            }, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 80, "completion_tokens": 15}
+        }),
+    ];
+
+    let provider = MockProvider {
+        responses: std::sync::Mutex::new(mock_responses.into_iter()),
+    };
+    let executor = MockExecutor;
+    let events: std::sync::Arc<std::sync::Mutex<Vec<String>>> = Default::default();
+    let events_clone = events.clone();
+    let sender: oc_session::prompt::EventSender = Arc::new(move |event| {
+        events_clone.lock().unwrap().push(format!("{event:?}"));
+    });
+
+    let dir = std::path::PathBuf::from("/tmp/proj");
+    let input = PromptLoopInput {
+        session_id: "ses_loop",
+        parent_message_id: "msg_parent",
+        agent: "build",
+        model_provider_id: "openai",
+        model_id: "gpt-5",
+        system: "You are helpful.",
+        directory: &dir,
+        worktree: &dir,
+        max_tokens: 4096,
+        max_iterations: 5,
+    };
+
+    let messages = vec![serde_json::json!({"role": "user", "content": "read /tmp/f"})];
+    let tools = vec![];
+
+    let result = run_prompt_loop(
+        &store, &provider, &executor, &sender, &input, &messages, &tools,
+    )
+    .unwrap();
+
+    assert!(result.output_text.contains("file content"));
+    assert_eq!(result.tokens.input, 130); // 50 + 80
+    assert_eq!(result.finish_reason.as_deref(), Some("stop"));
+
+    // events dipublish
+    let log = events.lock().unwrap();
+    assert!(log.iter().any(|e| e.contains("PartUpdated")));
+    assert!(log.iter().any(|e| e.contains("ToolExecuted")));
+    assert!(log.iter().any(|e| e.contains("MessageCompleted")));
+
+    // pesan tersimpan di store
+    let stored = store
+        .get_message("ses_loop", &result.assistant_message_id)
+        .unwrap();
+    assert!(stored.is_some());
 }

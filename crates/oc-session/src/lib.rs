@@ -3,6 +3,8 @@
 //! packages/core/src/session/sql.ts (SessionTable row shape).
 
 pub mod model;
+pub mod prompt;
 pub mod store;
+pub mod tool_result;
 
 pub use model::{Part, Session, SessionRow, ToolState, UserOrAssistant, WithParts};
