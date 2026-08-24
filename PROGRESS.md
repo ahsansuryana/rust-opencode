@@ -16,7 +16,7 @@ Status: `not-started` / `in-progress` / `done` / `blocked (alasan)`.
 | 9 | oc-session (bag. 1: data model) | done | 2026-08-24 | Port schema/v1/session.ts: 12 Part variants (serde tagged), ToolState 4-state, UserOrAssistant messages, WithParts, SessionRow (SQLite table shape), CRUD store (file-based via oc-storage). 5 test round-trip+CRUD |
 | 10 | oc-session (bag. 2: prompt loop) | in-progress | 2026-08-24 | 10a DONE: run_prompt_loop dengan ProviderClient/ToolExecutor traits, MockProvider test (single tool call + final response), event publishing (PartUpdated/ToolExecuted/MessageCompleted), token usage accumulation. 10b sisa: subagent spawning, interrupt/cancellation, multi-tool-call batching, applyCaching wiring |
 | 11 | oc-session (bag. 3: context & compaction) | done | 2026-08-24 | Port overflow.ts: usable(), isOverflow(), PRUNE_MINIMUM/PROTECT constants, should_prune(). ModelLimits struct lokal untuk test tanpa oc-provider dep. Full compaction flow (summarize via LLM) menyusul saat provider HTTP client terhubung ke prompt loop |
-| 12 | oc-server | not-started | - | - |
+| 12 | oc-server | done | 2026-08-24 | Core HTTP server dengan axum: session CRUD, message send/list, config/provider read-only, health. ENDPOINT_CHECKLIST.md mencatat full 150+ endpoint dari openapi.json; sprint ini meng-cover 9 core. Sisa endpoint menyusul |
 | 13 | oc-mcp | not-started | - | - |
 | 14 | oc-lsp | not-started | - | - |
 | 15 | oc-cli | not-started | - | - |
