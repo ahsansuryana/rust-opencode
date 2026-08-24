@@ -314,6 +314,12 @@ dependencies = [
 [[package]]
 name = "oc-agent"
 version = "0.1.0"
+dependencies = [
+ "oc-permission",
+ "oc-provider",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "oc-auth"
