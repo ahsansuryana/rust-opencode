@@ -15,5 +15,6 @@ oc-session = { path = "../oc-session" }
 oc-storage = { path = "../oc-storage" }
 clap = { version = "4", features = ["derive"] }
 axum = "0.8"
+crossterm = { version = "0.28", features = ["event-stream"] }
 serde_json = { workspace = true }
 tokio = { workspace = true }

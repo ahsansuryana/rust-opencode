@@ -1,40 +1,20 @@
-//! Ported dari packages/opencode/src/cli/index.ts (subset core commands).
+//! Ported dari packages/opencode/src/cli/index.ts — TUI interaktif dengan crossterm.
 
 use clap::{Parser, Subcommand};
 use oc_session::store::SessionStore;
 
-#[derive(Parser)]
-#[command(name = "rust-opencode", version, about = "Rust port of sst/opencode")]
-struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Start interactive session
-    Run {
-        /// Working directory
-        #[arg(short, long)]
-        directory: Option<String>,
-    },
-    /// List sessions
-    Sessions,
-    /// Show server status
-    Serve {
-        #[arg(short, long, default_value = "4096")]
-        port: u16,
-    },
-}
+mod tui;
 
 fn main() {
     let cli = Cli::parse();
     match cli.command {
         Some(Commands::Run { directory }) => {
             let dir = directory.unwrap_or_else(|| ".".to_string());
-            println!("Starting opencode session in {dir}...");
-            // TODO: full TUI menyusul
-            println!("Interactive TUI not yet implemented.");
+            let store = SessionStore::new().unwrap_or_else(|e| {
+                eprintln!("Failed to init storage: {e}");
+                std::process::exit(1);
+            });
+            tui::run_interactive(&store, &dir);
         }
         Some(Commands::Sessions) => {
             let store = SessionStore::new().unwrap_or_else(|e| {
@@ -66,7 +46,35 @@ fn main() {
             });
         }
         None => {
-            println!("rust-opencode: not yet implemented — use --help for commands");
+            let store = SessionStore::new().unwrap_or_else(|e| {
+                eprintln!("Failed to init storage: {e}");
+                std::process::exit(1);
+            });
+            tui::run_interactive(&store, ".");
         }
     }
+}
+
+#[derive(Parser)]
+#[command(name = "rust-opencode", version, about = "Rust port of sst/opencode")]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Start interactive session
+    Run {
+        /// Working directory
+        #[arg(short, long)]
+        directory: Option<String>,
+    },
+    /// List sessions
+    Sessions,
+    /// Start HTTP server
+    Serve {
+        #[arg(short, long, default_value = "4096")]
+        port: u16,
+    },
 }
