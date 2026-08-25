@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>rust-opencode</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--surface:#141414;--border:#262626;--text:#e5e5e5;--dim:#737373;--accent:#3b82f6;--green:#22c55e;--red:#ef4444;--yellow:#eab308}
+body{font-family:'SF Mono','Fira Code','Cascadia Code',monospace;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
+header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--surface)}
+header h1{font-size:14px;font-weight:600;color:var(--accent)}
+header .status{font-size:11px;color:var(--dim)}
+header .status.ok{color:var(--green)}
+header .status.err{color:var(--red)}
+#messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.msg{max-width:800px;width:100%;margin:0 auto}
+.msg .role{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px}
+.msg.user .role{color:var(--green)}
+.msg.assistant .role{color:var(--accent)}
+.msg .content{font-size:13px;line-height:1.6;white-space:pre-wrap;color:var(--text)}
+.msg .content code{background:var(--surface);padding:2px 6px;border-radius:3px;font-size:12px}
+.msg.tool{opacity:0.7}
+.msg.tool .role{color:var(--yellow)}
+.msg.error .role{color:var(--red)}
+.msg.system{opacity:0.5}
+.msg.system .role{color:var(--dim)}
+#input-area{padding:16px 20px;border-top:1px solid var(--border);background:var(--surface)}
+#input-row{display:flex;gap:8px;max-width:800px;margin:0 auto}
+#input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:6px;font-family:inherit;font-size:13px;resize:none;outline:none;min-height:40px;max-height:200px}
+#input:focus{border-color:var(--accent)}
+#input::placeholder{color:var(--dim)}
+button#send{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600}
+button#send:hover{opacity:0.9}
+button#send:disabled{opacity:0.4;cursor:not-allowed}
+.sidebar{position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--surface);border-right:1px solid var(--border);padding:16px;transform:translateX(-100%);transition:transform 0.2s;z-index:10}
+.sidebar.open{transform:translateX(0)}
+.sidebar h2{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px}
+.sidebar .session{padding:8px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:var(--text);margin-bottom:2px}
+.sidebar .session:hover{background:var(--border)}
+.sidebar .session.active{background:var(--accent);color:#fff}
+.toolbar{display:flex;gap:8px;align-items:center}
+.toolbar button{background:none;border:1px solid var(--border);color:var(--dim);padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px}
+.toolbar button:hover{border-color:var(--text);color:var(--text)}
+</style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+  <h2>Sessions</h2>
+  <div id="session-list"></div>
+</div>
+
+<header>
+  <div class="toolbar">
+    <button onclick="toggleSidebar()" title="Sessions">&#9776;</button>
+    <button onclick="newSession()" title="New session">+</button>
+  </div>
+  <h1>rust-opencode</h1>
+  <span class="status" id="status">connecting...</span>
+</header>
+
+<div id="messages"></div>
+
+<div id="input-area">
+  <div id="input-row">
+    <textarea id="input" placeholder="Type a message..." rows="1"></textarea>
+    <button id="send" onclick="send()">Send</button>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let currentSession = null;
+let sessions = [];
+
+// --- API calls ---
+async function api(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  if (!r.ok) throw new Error(`${r.status}`);
+  return r.json();
+}
+
+// --- Health check ---
+async function checkHealth() {
+  const el = document.getElementById('status');
+  try {
+    await api('GET', '/health');
+    el.textContent = 'connected';
+    el.className = 'status ok';
+  } catch(e) {
+    el.textContent = 'disconnected';
+    el.className = 'status err';
+  }
+}
+
+// --- Sessions ---
+async function loadSessions() {
+  sessions = await api('GET', '/session');
+  renderSessions();
+  if (!currentSession && sessions.length > 0) {
+    selectSession(sessions[0].id);
+  }
+}
+
+function renderSessions() {
+  const el = document.getElementById('session-list');
+  el.innerHTML = sessions.map(s =>
+    `<div class="session ${s.id===currentSession?'active':''}" onclick="selectSession('${s.id}')">${s.title||s.id}</div>`
+  ).join('');
+}
+
+async function newSession() {
+  const s = await api('POST', '/session', { title: 'New Session', directory: '.' });
+  sessions.unshift(s);
+  renderSessions();
+  selectSession(s.id);
+}
+
+async function selectSession(id) {
+  currentSession = id;
+  renderSessions();
+  document.getElementById('messages').innerHTML = '';
+  // Load existing messages
+  try {
+    const msgs = await api('GET', `/session/${id}/message`);
+    for (const m of msgs) {
+      if (m.role === 'user') {
+        // find text part
+        const tp = m.parts.find(p => p.type === 'text');
+        if (tp) addMessage('user', tp.text);
+      } else if (m.role === 'assistant') {
+        const tp = m.parts.find(p => p.type === 'text');
+        if (tp) addMessage('assistant', tp.text);
+      }
+    }
+  } catch(e) {}
+  scrollBottom();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// --- Messages ---
+function addMessage(role, text, extra) {
+  const el = document.getElementById('messages');
+  const cls = extra || role;
+  el.innerHTML += `<div class="msg ${cls}"><div class="role">${role}</div><div class="content">${escapeHtml(text)}</div></div>`;
+  scrollBottom();
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function scrollBottom() {
+  const m = document.getElementById('messages');
+  m.scrollTop = m.scrollHeight;
+}
+
+// --- Send ---
+async function send() {
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  autoResize(input);
+
+  // Handle commands
+  if (text === '/new') { newSession(); return; }
+  if (text === '/list') { toggleSidebar(); return; }
+  if (text === '/clear') { document.getElementById('messages').innerHTML = ''; return; }
+
+  addMessage('user', text);
+
+  if (!currentSession) {
+    addMessage('system', 'No session selected. Creating one...');
+    await newSession();
+  }
+
+  const btn = document.getElementById('send');
+  btn.disabled = true;
+  addMessage('system', 'thinking...');
+
+  try {
+    await api('POST', `/session/${currentSession}/message`, {
+      content: text,
+      agent: 'build',
+      providerID: 'anthropic',
+      modelID: 'claude-sonnet-4'
+    });
+    // Remove "thinking..." and show placeholder response
+    const msgs = document.getElementById('messages');
+    const last = msgs.querySelector('.msg.system:last-child');
+    if (last) last.remove();
+    addMessage('assistant', `[Message sent to session ${currentSession}]\nLLM response will appear when provider is configured.`);
+  } catch(e) {
+    addMessage('error', `Failed to send: ${e.message}`);
+  }
+
+  btn.disabled = false;
+  input.focus();
+}
+
+// --- Auto-resize textarea ---
+const input = document.getElementById('input');
+input.addEventListener('input', () => autoResize(input));
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+
+// --- Init ---
+checkHealth();
+loadSessions();
+setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>

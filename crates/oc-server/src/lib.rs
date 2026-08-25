@@ -4,6 +4,7 @@
 
 pub mod routes;
 
+use axum::response::{Html, IntoResponse};
 use axum::routing::{delete, get, post};
 use axum::Router;
 use oc_session::store::SessionStore;
@@ -11,9 +12,20 @@ use std::sync::Arc;
 
 pub type AppState = Arc<SessionStore>;
 
+/// Embedded web UI — di-compile ke dalam binary.
+const INDEX_HTML: &str = include_str!("../static/index.html");
+
+async fn serve_ui() -> impl IntoResponse {
+    Html(INDEX_HTML.to_string())
+}
+
 pub fn router(store: SessionStore) -> Router {
     let state: AppState = Arc::new(store);
     Router::new()
+        // Web UI
+        .route("/", get(serve_ui))
+        .route("/ui", get(serve_ui))
+        // API routes
         .route("/health", get(routes::health))
         .route("/session", get(routes::list_sessions))
         .route("/session", post(routes::create_session))
