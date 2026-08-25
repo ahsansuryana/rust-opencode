@@ -143,3 +143,81 @@ pub async fn get_config() -> Json<Value> {
 pub async fn list_providers() -> Json<Value> {
     Json(json!([]))
 }
+
+// --- Sprint 12b: additional routes ---
+
+pub async fn update_session(
+    State(store): State<AppState>,
+    Path(session_id): Path<String>,
+    Json(body): Json<Value>,
+) -> Result<Json<SessionRow>, StatusCode> {
+    let mut session = store
+        .get_session(&session_id)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    if let Some(title) = body["title"].as_str() {
+        session.title = title.to_string();
+    }
+    if let Some(dir) = body["directory"].as_str() {
+        session.directory = dir.to_string();
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    session.time_updated = now;
+
+    store
+        .upsert_session(&session)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(session))
+}
+
+pub async fn list_parts(
+    State(store): State<AppState>,
+    Path((session_id, message_id)): Path<(String, String)>,
+) -> AppResult<Vec<oc_session::model::Part>> {
+    store
+        .list_parts(&session_id, &message_id)
+        .map(Json)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+pub async fn get_agent_list() -> Json<Value> {
+    Json(json!([
+        { "name": "build", "description": "Primary coding agent", "mode": "primary" },
+        { "name": "plan", "description": "Planning agent", "mode": "primary" },
+        { "name": "general", "description": "General purpose subagent", "mode": "subagent" },
+        { "name": "explore", "description": "Codebase exploration agent", "mode": "subagent" },
+        { "name": "compaction", "description": "Context compaction agent", "mode": "all" },
+        { "name": "title", "description": "Session title generator", "mode": "all" },
+        { "name": "summary", "description": "Session summary generator", "mode": "all" }
+    ]))
+}
+
+pub async fn get_tool_list() -> Json<Value> {
+    Json(json!([
+        { "name": "read", "description": "Read file contents" },
+        { "name": "write", "description": "Write file contents" },
+        { "name": "edit", "description": "Edit file with targeted replacements" },
+        { "name": "glob", "description": "Find files by pattern" },
+        { "name": "grep", "description": "Search file contents" },
+        { "name": "bash", "description": "Execute shell command" },
+        { "name": "webfetch", "description": "Fetch web content" },
+        { "name": "websearch", "description": "Search the web" },
+        { "name": "task", "description": "Launch subagent" },
+        { "name": "todowrite", "description": "Manage task list" },
+        { "name": "apply_patch", "description": "Apply codex-style patches" }
+    ]))
+}
+
+pub async fn get_model_list() -> Json<Value> {
+    Json(json!([
+        { "providerID": "anthropic", "modelID": "claude-sonnet-4", "name": "Claude Sonnet 4" },
+        { "providerID": "anthropic", "modelID": "claude-opus-4", "name": "Claude Opus 4" },
+        { "providerID": "openai", "modelID": "gpt-5", "name": "GPT-5" },
+        { "providerID": "openai", "modelID": "gpt-4.1", "name": "GPT-4.1" },
+        { "providerID": "google", "modelID": "gemini-2.5-pro", "name": "Gemini 2.5 Pro" }
+    ]))
+}
