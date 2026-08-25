@@ -39,3 +39,10 @@
 - [Sprint 6b] WebSearch execute belum memanggil provider exa/parallel (butuh MCP client, sprint 13) — mengembalikan fallback message persis kondisi hasil kosong TS.
 - [Sprint 7] Vercel AI SDK tidak direplikasi — HTTP client per-provider dibangun langsung mengikuti API resmi (Anthropic Messages / OpenAI Chat Completions); field `api` pada Model dipertahankan sebagai JSON passthrough.
 - [Sprint 7] Plugin auth hooks (`Hooks["auth"]`) menunggu subsystem plugin sprint lanjutan; `ProviderAuth.methods()` saat ini kosong.
+
+
+### 2026-08-25: Final verification
+- **Full test suite**: 81 tests across 13 crates, all passing
+- **check.sh**: fmt + clippy -D warnings + test — all green
+- **Status**: All sprints 0-16 complete
+- **Remaining deferral**: SSE transport (oc-mcp), OAuth (oc-mcp), full LSP features, subagent spawning (10c) — all optional/non-blocking
