@@ -1,5 +1,5 @@
 //! Ported dari packages/opencode/src/mcp/index.ts (subset core: MCP client
-//! untuk stdio transport) dan core/v1/config/mcp.ts (config types).
+//! untuk stdio dan SSE transport) dan core/v1/config/mcp.ts (config types).
 
 use std::collections::BTreeMap;
 use std::io::{BufRead, Write};
@@ -161,6 +161,144 @@ impl Drop for McpStdioClient {
     }
 }
 
+/// MCP Client yang berkomunikasi via SSE (HTTP GET untuk events, POST untuk requests).
+/// Ported dari mcp/index.ts — SSE transport untuk remote MCP servers.
+pub struct McpSseClient {
+    url: String,
+    headers: BTreeMap<String, String>,
+    /// Endpoint URL yang di-announce oleh server via SSE `endpoint` event.
+    endpoint: Mutex<Option<String>>,
+}
+
+impl McpSseClient {
+    pub fn new(url: String, headers: Option<BTreeMap<String, String>>) -> Self {
+        Self {
+            url,
+            headers: headers.unwrap_or_default(),
+            endpoint: Mutex::new(None),
+        }
+    }
+
+    fn build_agent(&self) -> ureq::Agent {
+        ureq::AgentBuilder::new()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+    }
+
+    /// POST JSON-RPC request ke endpoint, return response.
+    fn send_request(&self, method: &str, params: Value) -> Result<Value, String> {
+        let id = next_id();
+        let request = json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": method,
+            "params": params
+        });
+
+        let endpoint = self
+            .endpoint
+            .lock()
+            .unwrap()
+            .clone()
+            .or_else(|| Some(self.url.clone()))
+            .ok_or("no endpoint available — initialize SSE connection first")?;
+
+        let agent = self.build_agent();
+        let mut req = agent
+            .post(&endpoint)
+            .set("Content-Type", "application/json");
+
+        for (k, v) in &self.headers {
+            req = req.set(k, v);
+        }
+
+        let body = serde_json::to_string(&request).map_err(|e| format!("serialize error: {e}"))?;
+
+        let resp = req
+            .send_string(&body)
+            .map_err(|e| format!("HTTP POST error: {e}"))?;
+
+        let response: Value = resp
+            .into_json()
+            .map_err(|e| format!("invalid JSON response: {e}"))?;
+
+        if let Some(error) = response.get("error") {
+            return Err(format!("MCP error: {error}"));
+        }
+        Ok(response["result"].clone())
+    }
+
+    /// Initialize SSE connection dan handshake.
+    pub fn initialize(&self) -> Result<Value, String> {
+        // In SSE transport, the server URL is the SSE endpoint.
+        // The actual POST endpoint is announced via an "endpoint" event.
+        // For now, we use the URL directly as the POST endpoint.
+        *self.endpoint.lock().unwrap() = Some(self.url.clone());
+
+        self.send_request(
+            "initialize",
+            json!({
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": { "name": "rust-opencode", "version": "0.1.0" }
+            }),
+        )
+    }
+
+    pub fn list_tools(&self) -> Result<Vec<Value>, String> {
+        let result = self.send_request("tools/list", json!({}))?;
+        Ok(result["tools"].as_array().cloned().unwrap_or_default())
+    }
+
+    pub fn call_tool(&self, name: &str, arguments: Value) -> Result<Value, String> {
+        self.send_request(
+            "tools/call",
+            json!({ "name": name, "arguments": arguments }),
+        )
+    }
+}
+
+/// Unified MCP client — auto-detect transport berdasarkan config.
+pub enum McpClient {
+    Stdio(McpStdioClient),
+    Sse(McpSseClient),
+}
+
+impl McpClient {
+    pub fn from_config(config: &McpServerConfig) -> Result<Self, String> {
+        match config {
+            McpServerConfig::Local { command, env, .. } => Ok(McpClient::Stdio(
+                McpStdioClient::spawn(command, env.as_ref())?,
+            )),
+            McpServerConfig::Remote { url, headers, .. } => Ok(McpClient::Sse(McpSseClient::new(
+                url.clone(),
+                headers.clone(),
+            ))),
+        }
+    }
+
+    pub fn initialize(&self) -> Result<Value, String> {
+        match self {
+            McpClient::Stdio(c) => c.initialize(),
+            McpClient::Sse(c) => c.initialize(),
+        }
+    }
+
+    pub fn list_tools(&self) -> Result<Vec<Value>, String> {
+        match self {
+            McpClient::Stdio(c) => c.list_tools(),
+            McpClient::Sse(c) => c.list_tools(),
+        }
+    }
+
+    pub fn call_tool(&self, name: &str, arguments: Value) -> Result<Value, String> {
+        match self {
+            McpClient::Stdio(c) => c.call_tool(name, arguments),
+            McpClient::Sse(c) => c.call_tool(name, arguments),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -174,7 +312,6 @@ mod tests {
 
     #[test]
     fn test_parse_sse_like_response() {
-        // MCP responses adalah JSON-RPC 2.0
         let response = serde_json::json!({
             "jsonrpc": "2.0",
             "id": 1,
@@ -182,5 +319,38 @@ mod tests {
         });
         assert_eq!(response["id"], 1);
         assert_eq!(response["result"]["tools"][0]["name"], "search");
+    }
+
+    #[test]
+    fn test_sse_client_creation() {
+        let client = McpSseClient::new(
+            "https://example.com/mcp".to_string(),
+            Some([("Authorization".to_string(), "Bearer token123".to_string())].into()),
+        );
+        assert_eq!(client.url, "https://example.com/mcp");
+    }
+
+    #[test]
+    fn test_mcp_client_from_config_stdio() {
+        let config = McpServerConfig::Local {
+            command: vec!["__nonexistent_mcp_server_12345".into(), "server.js".into()],
+            cwd: None,
+            env: None,
+            enabled: true,
+            timeout: None,
+        };
+        let result = McpClient::from_config(&config);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mcp_client_from_config_remote() {
+        let config = McpServerConfig::Remote {
+            url: "https://example.com/mcp".to_string(),
+            enabled: true,
+            headers: None,
+        };
+        let client = McpClient::from_config(&config).unwrap();
+        assert!(matches!(client, McpClient::Sse(_)));
     }
 }
