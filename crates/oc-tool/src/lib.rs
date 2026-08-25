@@ -12,6 +12,7 @@ pub mod read;
 pub mod ripgrep;
 pub mod shell;
 pub mod shell_detect;
+pub mod task;
 pub mod truncate;
 pub mod webfetch;
 pub mod websearch;

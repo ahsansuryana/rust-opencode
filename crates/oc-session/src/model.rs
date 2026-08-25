@@ -472,3 +472,65 @@ pub struct SessionRow {
 
 /// Alias untuk kompatibilitas.
 pub type Session = SessionRow;
+
+/// Ported dari message-v2.ts:latest() — find latest user/assistant/finished messages
+/// and pending tasks (compaction/subtask parts).
+#[derive(Debug, Clone, Default)]
+pub struct LatestResult {
+    pub user: Option<WithParts>,
+    pub assistant: Option<WithParts>,
+    pub finished: Option<WithParts>,
+    pub tasks: Vec<Part>,
+}
+
+pub fn latest(msgs: &[WithParts]) -> LatestResult {
+    let mut result = LatestResult::default();
+
+    // Find latest user message
+    for m in msgs.iter().rev() {
+        if matches!(m.info, UserOrAssistant::User(_)) {
+            result.user = Some(m.clone());
+            break;
+        }
+    }
+
+    // Find latest assistant/finished message and extract pending tasks
+    let mut finished: Option<WithParts> = None;
+    for m in msgs.iter().rev() {
+        if let UserOrAssistant::Assistant(a) = &m.info {
+            if a.time.completed.is_some() && finished.is_none() {
+                finished = Some(m.clone());
+            }
+            if result.assistant.is_none() {
+                result.assistant = Some(m.clone());
+            }
+        }
+    }
+    result.finished = finished;
+
+    // Extract pending subtask/compaction parts from messages that are after finished
+    if let Some(ref fin) = result.finished {
+        for m in msgs {
+            // skip messages before finished
+            if m.info.created() <= fin.info.created() {
+                continue;
+            }
+            for p in &m.parts {
+                if matches!(p, Part::Subtask { .. } | Part::Compaction { .. }) {
+                    result.tasks.push(p.clone());
+                }
+            }
+        }
+    } else {
+        // no finished message → all tasks are pending
+        for m in msgs {
+            for p in &m.parts {
+                if matches!(p, Part::Subtask { .. } | Part::Compaction { .. }) {
+                    result.tasks.push(p.clone());
+                }
+            }
+        }
+    }
+
+    result
+}

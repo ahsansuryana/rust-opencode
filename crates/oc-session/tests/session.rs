@@ -362,6 +362,9 @@ fn prompt_loop_single_tool_call() {
         max_tokens: 4096,
         max_iterations: 5,
         cancellation: None,
+        max_subagent_depth: 1,
+        depth: 0,
+        spawner: None,
     };
 
     let messages = vec![serde_json::json!({"role": "user", "content": "read /tmp/f"})];
@@ -431,6 +434,9 @@ fn prompt_loop_cancellation_stops_early() {
         max_tokens: 4096,
         max_iterations: 100, // tinggi — tapi cancelled
         cancellation: Some(token),
+        max_subagent_depth: 1,
+        depth: 0,
+        spawner: None,
     };
 
     let provider = InfiniteProvider;
@@ -446,4 +452,197 @@ fn prompt_loop_cancellation_stops_early() {
         run_prompt_loop(&store, &provider, &NoopExecutor, &sender, &input, &[], &[]).unwrap();
 
     assert_eq!(result.finish_reason.as_deref(), Some("aborted"));
+}
+
+// --- Sprint 10c: subagent spawning ---
+
+#[test]
+fn latest_extracts_pending_subtask_parts() {
+    let msgs = vec![
+        WithParts {
+            info: UserOrAssistant::User(UserMessage {
+                id: "msg_u1".into(),
+                session_id: "ses_1".into(),
+                time: TimeCreated { created: 100 },
+                format: None,
+                summary: None,
+                agent: "build".into(),
+                model: ModelRefJson {
+                    provider_id: "test".into(),
+                    model_id: "m".into(),
+                },
+                system: None,
+                tools: None,
+            }),
+            parts: vec![],
+        },
+        WithParts {
+            info: UserOrAssistant::Assistant(AssistantMessage {
+                id: "msg_a1".into(),
+                session_id: "ses_1".into(),
+                time: TimeWithCompletion {
+                    created: 200,
+                    completed: Some(300),
+                },
+                error: None,
+                parent_id: "msg_u1".into(),
+                model_id: "m".into(),
+                provider_id: "test".into(),
+                mode: "primary".into(),
+                agent: "build".into(),
+                path: SessionPath {
+                    cwd: "/".into(),
+                    root: "/".into(),
+                },
+                summary: None,
+                cost: 0.0,
+                tokens: TokenUsage::default(),
+                structured: None,
+                variant: None,
+                finish: Some("stop".into()),
+            }),
+            parts: vec![Part::Text {
+                ids: BaseIds {
+                    id: "prt_1".into(),
+                    session_id: "ses_1".into(),
+                    message_id: "msg_a1".into(),
+                },
+                text: "I'll spawn a subagent".into(),
+                synthetic: None,
+                ignored: None,
+                time: None,
+                metadata: None,
+            }],
+        },
+        WithParts {
+            info: UserOrAssistant::User(UserMessage {
+                id: "msg_u2".into(),
+                session_id: "ses_1".into(),
+                time: TimeCreated { created: 400 },
+                format: None,
+                summary: None,
+                agent: "build".into(),
+                model: ModelRefJson {
+                    provider_id: "test".into(),
+                    model_id: "m".into(),
+                },
+                system: None,
+                tools: None,
+            }),
+            parts: vec![Part::Subtask {
+                ids: BaseIds {
+                    id: "prt_st1".into(),
+                    session_id: "ses_1".into(),
+                    message_id: "msg_u2".into(),
+                },
+                prompt: "explore this codebase".into(),
+                description: "explore".into(),
+                agent: "explore".into(),
+                model: None,
+                command: None,
+            }],
+        },
+    ];
+
+    let result = latest(&msgs);
+    assert!(result.user.is_some());
+    assert!(result.assistant.is_some());
+    assert_eq!(result.tasks.len(), 1);
+    assert!(matches!(&result.tasks[0], Part::Subtask { agent, .. } if agent == "explore"));
+}
+
+#[test]
+fn render_task_output_format() {
+    use oc_session::prompt::render_task_output;
+    let output = render_task_output("ses_child", "completed", "The answer is 42.");
+    assert!(output.contains("<task id=\"ses_child\" state=\"completed\">"));
+    assert!(output.contains("<task_result>"));
+    assert!(output.contains("The answer is 42."));
+    assert!(output.contains("</task>"));
+
+    let error = render_task_output("ses_child", "error", "timeout");
+    assert!(error.contains("<task_error>"));
+    assert!(error.contains("timeout"));
+}
+
+#[test]
+fn handle_subtask_depth_limit() {
+    use oc_session::prompt::{handle_subtask, NoopSpawner, SubagentContext};
+
+    let spawner = NoopSpawner;
+    let subtask = Part::Subtask {
+        ids: BaseIds {
+            id: "prt_1".into(),
+            session_id: "ses_1".into(),
+            message_id: "msg_1".into(),
+        },
+        prompt: "do something".into(),
+        description: "test".into(),
+        agent: "general".into(),
+        model: None,
+        command: None,
+    };
+    let ctx = SubagentContext {
+        parent_session_id: "ses_1".into(),
+        directory: std::path::PathBuf::from("/tmp"),
+        worktree: std::path::PathBuf::from("/tmp"),
+        model_provider_id: "test".into(),
+        model_id: "m".into(),
+    };
+    // depth 1 >= max_depth 1 → should fail
+    let result = handle_subtask(&spawner, &subtask, &ctx, 1, 1);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("depth limit"));
+}
+
+#[test]
+fn prompt_loop_with_subagent_spawner() {
+    use oc_session::prompt::NoopSpawner;
+
+    struct SubagentProvider;
+    impl ProviderClient for SubagentProvider {
+        fn send(&self, _: &str, _: &str, _: &[Value], _: &[Value]) -> Result<Value, String> {
+            Ok(serde_json::json!({
+                "choices": [{"message": {
+                    "content": "Done.",
+                    "tool_calls": null
+                }, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5}
+            }))
+        }
+    }
+
+    let store = setup_store("subagent");
+    let dir = std::path::PathBuf::from("/tmp/proj");
+    let input = PromptLoopInput {
+        session_id: "ses_sub",
+        parent_message_id: "msg_p",
+        agent: "build",
+        model_provider_id: "test",
+        model_id: "m",
+        system: "",
+        directory: &dir,
+        worktree: &dir,
+        max_tokens: 4096,
+        max_iterations: 5,
+        cancellation: None,
+        max_subagent_depth: 1,
+        depth: 0,
+        spawner: Some(Arc::new(NoopSpawner)),
+    };
+    let sender: oc_session::prompt::EventSender = Arc::new(|_| {});
+
+    let result = run_prompt_loop(
+        &store,
+        &SubagentProvider,
+        &MockExecutor,
+        &sender,
+        &input,
+        &[],
+        &[],
+    )
+    .unwrap();
+
+    assert!(result.output_text.contains("Done."));
+    assert_eq!(result.finish_reason.as_deref(), Some("stop"));
 }

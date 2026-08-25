@@ -74,6 +74,44 @@ pub struct ModelRef {
     pub model_id: String,
 }
 
+/// Ported dari agent/subagent-permissions.ts — derive child session permission.
+pub fn derive_subagent_permission(
+    parent_permission: &[oc_permission::Rule],
+    subagent: &Info,
+) -> Vec<oc_permission::Rule> {
+    // inherit only deny rules and external_directory from parent
+    let mut result: Vec<oc_permission::Rule> = parent_permission
+        .iter()
+        .filter(|r| r.permission == "external_directory" || r.action == oc_permission::Action::Deny)
+        .cloned()
+        .collect();
+
+    // default deny todowrite unless subagent explicitly permits it
+    let can_todo = subagent
+        .permission
+        .iter()
+        .any(|r| r.permission == "todowrite");
+    if !can_todo {
+        result.push(oc_permission::Rule {
+            permission: "todowrite".to_string(),
+            pattern: "*".to_string(),
+            action: oc_permission::Action::Deny,
+        });
+    }
+
+    // default deny task unless subagent explicitly permits it
+    let can_task = subagent.permission.iter().any(|r| r.permission == "task");
+    if !can_task {
+        result.push(oc_permission::Rule {
+            permission: "task".to_string(),
+            pattern: "*".to_string(),
+            action: oc_permission::Action::Deny,
+        });
+    }
+
+    result
+}
+
 /// Config override shape dari cfg.agent (config.ts ConfigAgent).
 #[derive(Debug, Clone, Default, serde::Deserialize)]
 pub struct AgentConfigOverride {

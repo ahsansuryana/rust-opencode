@@ -58,6 +58,41 @@ pub trait ToolExecutor: Send + Sync {
 
 pub type AskCallback = Box<dyn Fn(&str, Vec<String>) -> Result<(), String> + Send + Sync>;
 
+/// Context untuk spawn subagent — menggantikan terlalu banyak parameter.
+pub struct SubagentContext {
+    pub parent_session_id: String,
+    pub directory: std::path::PathBuf,
+    pub worktree: std::path::PathBuf,
+    pub model_provider_id: String,
+    pub model_id: String,
+}
+
+/// Trait untuk spawn subagent session — di-inject dari orchestrator.
+pub trait SubagentSpawner: Send + Sync {
+    /// Spawn child session, jalankan prompt loop, kembalikan output text.
+    fn spawn_subagent(
+        &self,
+        agent: &str,
+        prompt: &str,
+        ctx: &SubagentContext,
+        depth: usize,
+    ) -> Result<String, String>;
+}
+
+/// No-op spawner untuk test / non-subagent usage.
+pub struct NoopSpawner;
+impl SubagentSpawner for NoopSpawner {
+    fn spawn_subagent(
+        &self,
+        _: &str,
+        _: &str,
+        _: &SubagentContext,
+        _: usize,
+    ) -> Result<String, String> {
+        Err("subagent spawning not available".to_string())
+    }
+}
+
 /// Context yang diteruskan ke tiap tool eksekusi.
 pub struct ToolContext {
     pub session_id: String,
@@ -82,6 +117,12 @@ pub struct PromptLoopInput<'a> {
     pub max_iterations: usize,
     /// Cancellation token untuk interrupt loop (opsional).
     pub cancellation: Option<crate::cancellation::CancellationToken>,
+    /// Max subagent nesting depth (default 1 = no nesting).
+    pub max_subagent_depth: usize,
+    /// Current nesting depth (0 = top-level).
+    pub depth: usize,
+    /// Subagent spawner (opsional, untuk test NoopSpawner).
+    pub spawner: Option<Arc<dyn SubagentSpawner>>,
 }
 
 /// Hasil akhir loop.
@@ -166,6 +207,45 @@ pub fn run_prompt_loop(
             }
         }
         iteration += 1;
+
+        // 0. Check for pending subtask parts in the conversation
+        // Ported dari prompt.ts:runLoop line 1142-1147
+        let latest = crate::model::latest(&[]);
+        if let Some(spawner) = &input.spawner {
+            let sub_ctx = SubagentContext {
+                parent_session_id: input.session_id.to_string(),
+                directory: input.directory.to_path_buf(),
+                worktree: input.worktree.to_path_buf(),
+                model_provider_id: input.model_provider_id.to_string(),
+                model_id: input.model_id.to_string(),
+            };
+            for task_part in &latest.tasks {
+                if let Part::Subtask { .. } = task_part {
+                    match handle_subtask(
+                        spawner.as_ref(),
+                        task_part,
+                        &sub_ctx,
+                        input.depth,
+                        input.max_subagent_depth,
+                    ) {
+                        Ok(output) => {
+                            // inject result back as synthetic user message
+                            working_messages.push(json!({
+                                "role": "user",
+                                "content": output
+                            }));
+                        }
+                        Err(e) => {
+                            let err_output = render_task_output("pending", "error", &e);
+                            working_messages.push(json!({
+                                "role": "user",
+                                "content": err_output
+                            }));
+                        }
+                    }
+                }
+            }
+        }
 
         // 1. Kirim ke provider
         let response = provider.send(input.model_id, input.system, &working_messages, tools)?;
@@ -379,6 +459,42 @@ fn now_millis() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
+}
+
+/// Ported dari tool/task.ts:renderOutput() — render task result XML.
+pub fn render_task_output(session_id: &str, state: &str, text: &str) -> String {
+    let tag = if state == "error" {
+        "task_error"
+    } else {
+        "task_result"
+    };
+    format!("<task id=\"{session_id}\" state=\"{state}\">\n<{tag}>\n{text}\n</{tag}>\n</task>")
+}
+
+/// Ported dari tool/task.ts — handle subtask execution.
+/// Mengembalikan output text dari subagent, atau error string.
+pub fn handle_subtask(
+    spawner: &dyn SubagentSpawner,
+    subtask: &Part,
+    ctx: &SubagentContext,
+    depth: usize,
+    max_depth: usize,
+) -> Result<String, String> {
+    let (agent, prompt) = match subtask {
+        Part::Subtask { agent, prompt, .. } => (agent.as_str(), prompt.as_str()),
+        _ => return Err("not a subtask part".to_string()),
+    };
+
+    if depth >= max_depth {
+        return Err(format!(
+            "Subagent depth limit reached ({max_depth}). \
+             Set subagent_depth in config to allow deeper nesting."
+        ));
+    }
+
+    let output = spawner.spawn_subagent(agent, prompt, ctx, depth + 1)?;
+
+    Ok(render_task_output("pending", "completed", &output))
 }
 
 fn counter() -> &'static std::sync::Mutex<u64> {
