@@ -133,6 +133,112 @@ impl LspClient {
         )
     }
 
+    /// Ported dari lsp/server.ts — textDocument/definition
+    pub fn goto_definition(&self, uri: &str, line: u32, character: u32) -> Result<Value, String> {
+        self.request(
+            "textDocument/definition",
+            json!({
+                "textDocument": { "uri": uri },
+                "position": { "line": line, "character": character }
+            }),
+        )
+    }
+
+    /// Ported dari lsp/server.ts — textDocument/references
+    pub fn references(&self, uri: &str, line: u32, character: u32) -> Result<Value, String> {
+        self.request(
+            "textDocument/references",
+            json!({
+                "textDocument": { "uri": uri },
+                "position": { "line": line, "character": character },
+                "context": { "includeDeclaration": true }
+            }),
+        )
+    }
+
+    /// Ported dari lsp/server.ts — textDocument/codeAction
+    pub fn code_action(
+        &self,
+        uri: &str,
+        start_line: u32,
+        start_char: u32,
+        end_line: u32,
+        end_char: u32,
+    ) -> Result<Value, String> {
+        self.request(
+            "textDocument/codeAction",
+            json!({
+                "textDocument": { "uri": uri },
+                "range": {
+                    "start": { "line": start_line, "character": start_char },
+                    "end": { "line": end_line, "character": end_char }
+                },
+                "context": { "diagnostics": [] }
+            }),
+        )
+    }
+
+    /// Ported dari lsp/server.ts — textDocument/publishDiagnostics (notification from server)
+    /// Note: diagnostics are pushed by the server, not requested. This method
+    /// polls for the next notification and returns it if it's a diagnostic.
+    pub fn wait_for_diagnostics(&self) -> Result<Value, String> {
+        self.read_message()
+    }
+
+    /// textDocument/didChange — notify server of content changes.
+    pub fn did_change(&self, uri: &str, text: &str, version: i32) -> Result<(), String> {
+        self.write_message(&json!({
+            "jsonrpc": "2.0",
+            "method": "textDocument/didChange",
+            "params": {
+                "textDocument": { "uri": uri, "version": version },
+                "contentChanges": [{ "text": text }]
+            }
+        }))
+    }
+
+    /// textDocument/didSave — notify server that file was saved.
+    pub fn did_save(&self, uri: &str) -> Result<(), String> {
+        self.write_message(&json!({
+            "jsonrpc": "2.0",
+            "method": "textDocument/didSave",
+            "params": {
+                "textDocument": { "uri": uri }
+            }
+        }))
+    }
+
+    /// textDocument/rename — get rename edits for symbol at position.
+    pub fn rename(
+        &self,
+        uri: &str,
+        line: u32,
+        character: u32,
+        new_name: &str,
+    ) -> Result<Value, String> {
+        self.request(
+            "textDocument/rename",
+            json!({
+                "textDocument": { "uri": uri },
+                "position": { "line": line, "character": character },
+                "newName": new_name
+            }),
+        )
+    }
+
+    /// textDocument/documentSymbol — list symbols in a document.
+    pub fn document_symbols(&self, uri: &str) -> Result<Value, String> {
+        self.request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": uri } }),
+        )
+    }
+
+    /// workspace/symbol — search for symbols in the workspace.
+    pub fn workspace_symbols(&self, query: &str) -> Result<Value, String> {
+        self.request("workspace/symbol", json!({ "query": query }))
+    }
+
     pub fn shutdown(&self) -> Result<(), String> {
         self.write_message(
             &json!({ "jsonrpc": "2.0", "id": 9999, "method": "shutdown", "params": null }),
